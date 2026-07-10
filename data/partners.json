@@ -1,0 +1,874 @@
+[
+  {
+    "id": "p01",
+    "name": "Pooja Sharma",
+    "zone": "South Delhi",
+    "services": [
+      "Makeup",
+      "Manicure"
+    ],
+    "tenureMonths": 45,
+    "avgRating": 4.92,
+    "reviewCount": 13,
+    "completionRate": 0.98,
+    "cancellationRate": 0.08,
+    "rebookRate": 0.4,
+    "monthlyBookings": 39,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p02",
+    "name": "Neha Verma",
+    "zone": "South Delhi",
+    "services": [
+      "Facial",
+      "Haircut",
+      "Waxing",
+      "Manicure"
+    ],
+    "tenureMonths": 39,
+    "avgRating": 4.82,
+    "reviewCount": 17,
+    "completionRate": 0.98,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.4,
+    "monthlyBookings": 25,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p03",
+    "name": "Kavita Singh",
+    "zone": "Central Delhi",
+    "services": [
+      "Manicure",
+      "Haircut",
+      "Hair Spa"
+    ],
+    "tenureMonths": 13,
+    "avgRating": 4.95,
+    "reviewCount": 20,
+    "completionRate": 0.92,
+    "cancellationRate": 0.07,
+    "rebookRate": 0.43,
+    "monthlyBookings": 33,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p04",
+    "name": "Ritu Gupta",
+    "zone": "South Delhi",
+    "services": [
+      "Manicure",
+      "Hair Coloring"
+    ],
+    "tenureMonths": 47,
+    "avgRating": 4.75,
+    "reviewCount": 20,
+    "completionRate": 0.98,
+    "cancellationRate": 0.08,
+    "rebookRate": 0.48,
+    "monthlyBookings": 29,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p05",
+    "name": "Sunita Yadav",
+    "zone": "South Delhi",
+    "services": [
+      "Haircut",
+      "Manicure"
+    ],
+    "tenureMonths": 34,
+    "avgRating": 4.83,
+    "reviewCount": 18,
+    "completionRate": 0.96,
+    "cancellationRate": 0.07,
+    "rebookRate": 0.59,
+    "monthlyBookings": 54,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p06",
+    "name": "Meena Mehra",
+    "zone": "North Delhi",
+    "services": [
+      "Hair Coloring",
+      "Waxing"
+    ],
+    "tenureMonths": 14,
+    "avgRating": 4.94,
+    "reviewCount": 17,
+    "completionRate": 0.91,
+    "cancellationRate": 0.04,
+    "rebookRate": 0.37,
+    "monthlyBookings": 39,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p07",
+    "name": "Anjali Chauhan",
+    "zone": "South Delhi",
+    "services": [
+      "Waxing"
+    ],
+    "tenureMonths": 25,
+    "avgRating": 4.75,
+    "reviewCount": 16,
+    "completionRate": 0.91,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.36,
+    "monthlyBookings": 20,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p08",
+    "name": "Swati Bisht",
+    "zone": "South Delhi",
+    "services": [
+      "Facial",
+      "Waxing",
+      "Manicure",
+      "Makeup"
+    ],
+    "tenureMonths": 27,
+    "avgRating": 4.95,
+    "reviewCount": 19,
+    "completionRate": 0.91,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.49,
+    "monthlyBookings": 25,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p09",
+    "name": "Deepa Rawat",
+    "zone": "South Delhi",
+    "services": [
+      "Pedicure",
+      "Manicure"
+    ],
+    "tenureMonths": 40,
+    "avgRating": 4.9,
+    "reviewCount": 10,
+    "completionRate": 0.95,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.38,
+    "monthlyBookings": 55,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p10",
+    "name": "Rekha Negi",
+    "zone": "North Delhi",
+    "services": [
+      "Pedicure",
+      "Haircut",
+      "Waxing",
+      "Hair Spa"
+    ],
+    "tenureMonths": 27,
+    "avgRating": 4.84,
+    "reviewCount": 19,
+    "completionRate": 0.91,
+    "cancellationRate": 0.07,
+    "rebookRate": 0.4,
+    "monthlyBookings": 20,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p11",
+    "name": "Shalini Sharma",
+    "zone": "East Delhi",
+    "services": [
+      "Waxing",
+      "Hair Coloring",
+      "Manicure"
+    ],
+    "tenureMonths": 7,
+    "avgRating": 4.08,
+    "reviewCount": 12,
+    "completionRate": 0.98,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.41,
+    "monthlyBookings": 47,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p12",
+    "name": "Priya Verma",
+    "zone": "South Delhi",
+    "services": [
+      "Hair Coloring",
+      "Hair Spa"
+    ],
+    "tenureMonths": 39,
+    "avgRating": 3.93,
+    "reviewCount": 15,
+    "completionRate": 0.91,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.36,
+    "monthlyBookings": 49,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p13",
+    "name": "Nisha Singh",
+    "zone": "South Delhi",
+    "services": [
+      "Facial",
+      "Waxing",
+      "Manicure"
+    ],
+    "tenureMonths": 48,
+    "avgRating": 3.9,
+    "reviewCount": 10,
+    "completionRate": 0.94,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.49,
+    "monthlyBookings": 39,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p14",
+    "name": "Geeta Gupta",
+    "zone": "Central Delhi",
+    "services": [
+      "Facial",
+      "Manicure",
+      "Hair Spa"
+    ],
+    "tenureMonths": 16,
+    "avgRating": 4.15,
+    "reviewCount": 13,
+    "completionRate": 0.92,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.46,
+    "monthlyBookings": 45,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p15",
+    "name": "Aarti Yadav",
+    "zone": "North Delhi",
+    "services": [
+      "Hair Spa",
+      "Haircut",
+      "Waxing"
+    ],
+    "tenureMonths": 25,
+    "avgRating": 4.07,
+    "reviewCount": 14,
+    "completionRate": 0.92,
+    "cancellationRate": 0.07,
+    "rebookRate": 0.59,
+    "monthlyBookings": 33,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p16",
+    "name": "Suman Mehra",
+    "zone": "South Delhi",
+    "services": [
+      "Haircut",
+      "Waxing"
+    ],
+    "tenureMonths": 47,
+    "avgRating": 4,
+    "reviewCount": 9,
+    "completionRate": 0.95,
+    "cancellationRate": 0.08,
+    "rebookRate": 0.56,
+    "monthlyBookings": 37,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p17",
+    "name": "Vandana Chauhan",
+    "zone": "South Delhi",
+    "services": [
+      "Makeup",
+      "Hair Spa"
+    ],
+    "tenureMonths": 32,
+    "avgRating": 4,
+    "reviewCount": 15,
+    "completionRate": 0.94,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.41,
+    "monthlyBookings": 50,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p18",
+    "name": "Komal Bisht",
+    "zone": "West Delhi",
+    "services": [
+      "Pedicure",
+      "Hair Coloring",
+      "Waxing"
+    ],
+    "tenureMonths": 20,
+    "avgRating": 4,
+    "reviewCount": 9,
+    "completionRate": 0.94,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.4,
+    "monthlyBookings": 21,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p19",
+    "name": "Payal Rawat",
+    "zone": "North Delhi",
+    "services": [
+      "Haircut",
+      "Makeup"
+    ],
+    "tenureMonths": 36,
+    "avgRating": 4.07,
+    "reviewCount": 14,
+    "completionRate": 0.93,
+    "cancellationRate": 0.04,
+    "rebookRate": 0.38,
+    "monthlyBookings": 55,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p20",
+    "name": "Seema Negi",
+    "zone": "East Delhi",
+    "services": [
+      "Makeup"
+    ],
+    "tenureMonths": 12,
+    "avgRating": 3.87,
+    "reviewCount": 15,
+    "completionRate": 0.94,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.43,
+    "monthlyBookings": 47,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p21",
+    "name": "Rani Sharma",
+    "zone": "South Delhi",
+    "services": [
+      "Haircut",
+      "Facial"
+    ],
+    "tenureMonths": 36,
+    "avgRating": 4.2,
+    "reviewCount": 10,
+    "completionRate": 0.92,
+    "cancellationRate": 0.08,
+    "rebookRate": 0.39,
+    "monthlyBookings": 45,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p22",
+    "name": "Jyoti Verma",
+    "zone": "South Delhi",
+    "services": [
+      "Haircut",
+      "Hair Coloring"
+    ],
+    "tenureMonths": 29,
+    "avgRating": 4,
+    "reviewCount": 10,
+    "completionRate": 0.97,
+    "cancellationRate": 0.02,
+    "rebookRate": 0.38,
+    "monthlyBookings": 44,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p23",
+    "name": "Lata Singh",
+    "zone": "North Delhi",
+    "services": [
+      "Manicure",
+      "Haircut",
+      "Hair Coloring"
+    ],
+    "tenureMonths": 30,
+    "avgRating": 4.14,
+    "reviewCount": 14,
+    "completionRate": 0.92,
+    "cancellationRate": 0.04,
+    "rebookRate": 0.41,
+    "monthlyBookings": 47,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p24",
+    "name": "Asha Gupta",
+    "zone": "Central Delhi",
+    "services": [
+      "Hair Spa",
+      "Hair Coloring",
+      "Haircut",
+      "Waxing"
+    ],
+    "tenureMonths": 28,
+    "avgRating": 3.88,
+    "reviewCount": 8,
+    "completionRate": 0.92,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.54,
+    "monthlyBookings": 36,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p25",
+    "name": "Kiran Yadav",
+    "zone": "South Delhi",
+    "services": [
+      "Hair Coloring"
+    ],
+    "tenureMonths": 37,
+    "avgRating": 4,
+    "reviewCount": 14,
+    "completionRate": 0.93,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.49,
+    "monthlyBookings": 22,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p26",
+    "name": "Pooja Mehra",
+    "zone": "South Delhi",
+    "services": [
+      "Hair Spa",
+      "Haircut"
+    ],
+    "tenureMonths": 36,
+    "avgRating": 3.94,
+    "reviewCount": 16,
+    "completionRate": 0.95,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.52,
+    "monthlyBookings": 40,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p27",
+    "name": "Neha Chauhan",
+    "zone": "South Delhi",
+    "services": [
+      "Haircut",
+      "Waxing"
+    ],
+    "tenureMonths": 21,
+    "avgRating": 4,
+    "reviewCount": 8,
+    "completionRate": 0.94,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.53,
+    "monthlyBookings": 56,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p28",
+    "name": "Kavita Bisht",
+    "zone": "North Delhi",
+    "services": [
+      "Haircut",
+      "Hair Spa"
+    ],
+    "tenureMonths": 13,
+    "avgRating": 4.07,
+    "reviewCount": 14,
+    "completionRate": 0.91,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.5,
+    "monthlyBookings": 51,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p29",
+    "name": "Ritu Rawat",
+    "zone": "South Delhi",
+    "services": [
+      "Pedicure",
+      "Waxing"
+    ],
+    "tenureMonths": 30,
+    "avgRating": 4.1,
+    "reviewCount": 10,
+    "completionRate": 0.91,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.58,
+    "monthlyBookings": 54,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p30",
+    "name": "Sunita Negi",
+    "zone": "East Delhi",
+    "services": [
+      "Haircut",
+      "Waxing"
+    ],
+    "tenureMonths": 13,
+    "avgRating": 3.93,
+    "reviewCount": 15,
+    "completionRate": 0.9,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.38,
+    "monthlyBookings": 36,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p31",
+    "name": "Meena Sharma",
+    "zone": "South Delhi",
+    "services": [
+      "Manicure",
+      "Hair Coloring",
+      "Facial"
+    ],
+    "tenureMonths": 7,
+    "avgRating": 4,
+    "reviewCount": 11,
+    "completionRate": 0.92,
+    "cancellationRate": 0.04,
+    "rebookRate": 0.44,
+    "monthlyBookings": 23,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p32",
+    "name": "Anjali Verma",
+    "zone": "South Delhi",
+    "services": [
+      "Makeup",
+      "Hair Coloring"
+    ],
+    "tenureMonths": 43,
+    "avgRating": 3.93,
+    "reviewCount": 15,
+    "completionRate": 0.9,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.52,
+    "monthlyBookings": 33,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p33",
+    "name": "Swati Singh",
+    "zone": "South Delhi",
+    "services": [
+      "Waxing",
+      "Hair Coloring",
+      "Haircut",
+      "Manicure"
+    ],
+    "tenureMonths": 11,
+    "avgRating": 4,
+    "reviewCount": 8,
+    "completionRate": 0.9,
+    "cancellationRate": 0.04,
+    "rebookRate": 0.42,
+    "monthlyBookings": 25,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p34",
+    "name": "Deepa Gupta",
+    "zone": "South Delhi",
+    "services": [
+      "Makeup",
+      "Haircut"
+    ],
+    "tenureMonths": 7,
+    "avgRating": 4.07,
+    "reviewCount": 14,
+    "completionRate": 0.97,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.46,
+    "monthlyBookings": 41,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p35",
+    "name": "Rekha Yadav",
+    "zone": "South Delhi",
+    "services": [
+      "Manicure",
+      "Waxing",
+      "Hair Spa"
+    ],
+    "tenureMonths": 30,
+    "avgRating": 4.08,
+    "reviewCount": 13,
+    "completionRate": 0.95,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.59,
+    "monthlyBookings": 37,
+    "trueCause": "healthy"
+  },
+  {
+    "id": "p36",
+    "name": "Shalini Mehra",
+    "zone": "West Delhi",
+    "services": [
+      "Hair Coloring",
+      "Facial",
+      "Waxing"
+    ],
+    "tenureMonths": 48,
+    "avgRating": 2.92,
+    "reviewCount": 12,
+    "completionRate": 0.9,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.21,
+    "monthlyBookings": 34,
+    "trueCause": "skill_gap"
+  },
+  {
+    "id": "p37",
+    "name": "Priya Chauhan",
+    "zone": "East Delhi",
+    "services": [
+      "Hair Coloring",
+      "Waxing",
+      "Makeup"
+    ],
+    "tenureMonths": 48,
+    "avgRating": 2.82,
+    "reviewCount": 11,
+    "completionRate": 0.96,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.27,
+    "monthlyBookings": 46,
+    "trueCause": "skill_gap"
+  },
+  {
+    "id": "p38",
+    "name": "Nisha Bisht",
+    "zone": "North Delhi",
+    "services": [
+      "Hair Coloring",
+      "Pedicure",
+      "Manicure"
+    ],
+    "tenureMonths": 32,
+    "avgRating": 2.7,
+    "reviewCount": 10,
+    "completionRate": 0.93,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.24,
+    "monthlyBookings": 25,
+    "trueCause": "skill_gap"
+  },
+  {
+    "id": "p39",
+    "name": "Geeta Rawat",
+    "zone": "North Delhi",
+    "services": [
+      "Hair Coloring",
+      "Facial"
+    ],
+    "tenureMonths": 8,
+    "avgRating": 2.83,
+    "reviewCount": 12,
+    "completionRate": 0.94,
+    "cancellationRate": 0.07,
+    "rebookRate": 0.2,
+    "monthlyBookings": 44,
+    "trueCause": "skill_gap"
+  },
+  {
+    "id": "p40",
+    "name": "Aarti Negi",
+    "zone": "West Delhi",
+    "services": [
+      "Manicure",
+      "Waxing"
+    ],
+    "tenureMonths": 14,
+    "avgRating": 2.92,
+    "reviewCount": 12,
+    "completionRate": 0.95,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.18,
+    "monthlyBookings": 89,
+    "trueCause": "rushing"
+  },
+  {
+    "id": "p41",
+    "name": "Suman Sharma",
+    "zone": "South Delhi",
+    "services": [
+      "Pedicure",
+      "Makeup",
+      "Waxing"
+    ],
+    "tenureMonths": 28,
+    "avgRating": 2.93,
+    "reviewCount": 14,
+    "completionRate": 0.91,
+    "cancellationRate": 0.06,
+    "rebookRate": 0.16,
+    "monthlyBookings": 70,
+    "trueCause": "rushing"
+  },
+  {
+    "id": "p42",
+    "name": "Vandana Verma",
+    "zone": "North Delhi",
+    "services": [
+      "Manicure",
+      "Pedicure"
+    ],
+    "tenureMonths": 44,
+    "avgRating": 3,
+    "reviewCount": 12,
+    "completionRate": 0.95,
+    "cancellationRate": 0.07,
+    "rebookRate": 0.09,
+    "monthlyBookings": 70,
+    "trueCause": "rushing"
+  },
+  {
+    "id": "p43",
+    "name": "Komal Singh",
+    "zone": "North Delhi",
+    "services": [
+      "Haircut",
+      "Facial",
+      "Waxing"
+    ],
+    "tenureMonths": 40,
+    "avgRating": 2.89,
+    "reviewCount": 9,
+    "completionRate": 0.95,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.29,
+    "monthlyBookings": 57,
+    "trueCause": "undisclosed_supplies"
+  },
+  {
+    "id": "p44",
+    "name": "Payal Gupta",
+    "zone": "South Delhi",
+    "services": [
+      "Hair Coloring"
+    ],
+    "tenureMonths": 24,
+    "avgRating": 2.78,
+    "reviewCount": 9,
+    "completionRate": 0.93,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.19,
+    "monthlyBookings": 59,
+    "trueCause": "undisclosed_supplies"
+  },
+  {
+    "id": "p45",
+    "name": "Seema Yadav",
+    "zone": "West Delhi",
+    "services": [
+      "Facial",
+      "Hair Coloring"
+    ],
+    "tenureMonths": 34,
+    "avgRating": 2.92,
+    "reviewCount": 13,
+    "completionRate": 0.91,
+    "cancellationRate": 0.04,
+    "rebookRate": 0.26,
+    "monthlyBookings": 56,
+    "trueCause": "undisclosed_supplies"
+  },
+  {
+    "id": "p46",
+    "name": "Rani Mehra",
+    "zone": "Central Delhi",
+    "services": [
+      "Hair Spa",
+      "Makeup"
+    ],
+    "tenureMonths": 8,
+    "avgRating": 3,
+    "reviewCount": 14,
+    "completionRate": 0.97,
+    "cancellationRate": 0.07,
+    "rebookRate": 0.4,
+    "monthlyBookings": 21,
+    "trueCause": "unfair_reviews"
+  },
+  {
+    "id": "p47",
+    "name": "Jyoti Chauhan",
+    "zone": "East Delhi",
+    "services": [
+      "Facial",
+      "Pedicure"
+    ],
+    "tenureMonths": 44,
+    "avgRating": 2.9,
+    "reviewCount": 10,
+    "completionRate": 0.96,
+    "cancellationRate": 0.04,
+    "rebookRate": 0.44,
+    "monthlyBookings": 31,
+    "trueCause": "unfair_reviews"
+  },
+  {
+    "id": "p48",
+    "name": "Lata Bisht",
+    "zone": "South Delhi",
+    "services": [
+      "Haircut",
+      "Hair Spa"
+    ],
+    "tenureMonths": 26,
+    "avgRating": 2.17,
+    "reviewCount": 12,
+    "completionRate": 0.62,
+    "cancellationRate": 0.26,
+    "rebookRate": 0.31,
+    "monthlyBookings": 22,
+    "trueCause": "unimprovable"
+  },
+  {
+    "id": "p49",
+    "name": "Asha Rawat",
+    "zone": "North Delhi",
+    "services": [
+      "Hair Coloring",
+      "Facial",
+      "Facial"
+    ],
+    "tenureMonths": 41,
+    "avgRating": 1.5,
+    "reviewCount": 2,
+    "completionRate": 0.93,
+    "cancellationRate": 0.03,
+    "rebookRate": 0.16,
+    "monthlyBookings": 34,
+    "trueCause": "skill_gap"
+  },
+  {
+    "id": "p50",
+    "name": "Kiran Negi",
+    "zone": "North Delhi",
+    "services": [
+      "Haircut",
+      "Pedicure",
+      "Manicure"
+    ],
+    "tenureMonths": 29,
+    "avgRating": 2,
+    "reviewCount": 3,
+    "completionRate": 0.96,
+    "cancellationRate": 0.05,
+    "rebookRate": 0.15,
+    "monthlyBookings": 75,
+    "trueCause": "rushing"
+  }
+]
