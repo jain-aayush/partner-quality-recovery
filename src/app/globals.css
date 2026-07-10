@@ -1,7 +1,40 @@
 @import "tailwindcss";
 
+/* Urban Company design tokens — sampled from urbancompany.com production CSS */
+:root {
+  --ink: #0f0f0f;
+  --ink-2: #545454;
+  --ink-3: #757575;
+  --page: #fafafa;
+  --card: #ffffff;
+  --line: #e2e2e2;
+  --brand: #6e42e5;
+  --brand-deep: #572ac8;
+  --good: #49ad49;
+  --bad: #dd0017;
+
+  /* cause palette — CVD-validated */
+  --cause-skill: #2a5cdb;
+  --cause-rushing: #c2410c;
+  --cause-supplies: #6e42e5;
+  --cause-unfair: #0d9488;
+  --cause-unimprovable: #dd0017;
+  --cause-insufficient: #757575;
+}
+
+@theme inline {
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-geist-mono);
+}
+
 body {
-  background: #f4f5f7;
-  color: #18181b;
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #ede7fd;
 }

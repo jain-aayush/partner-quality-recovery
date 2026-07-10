@@ -1,13 +1,5 @@
 import { Diagnosis } from "../lib/types";
-
-export const CAUSE_LABELS: Record<string, string> = {
-  skill_gap: "Skill gap",
-  rushing: "Rushing",
-  undisclosed_supplies: "Undisclosed supplies",
-  unfair_reviews: "Unfair reviews",
-  unimprovable: "Unimprovable",
-  insufficient_evidence: "Insufficient evidence",
-};
+import { CAUSES, CauseChip } from "./causes";
 
 export default function DiagnosisPanel({
   diagnosis,
@@ -17,38 +9,54 @@ export default function DiagnosisPanel({
   threshold: number;
 }) {
   const pct = Math.round(diagnosis.confidence * 100);
+  const above = diagnosis.confidence >= threshold;
+  const cause = CAUSES[diagnosis.rootCause];
+
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-3.5 text-[13px]">
       <div>
-        <div className="mb-1 flex items-baseline justify-between">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">Confidence</span>
-          <span className="font-mono text-xs text-zinc-600">
-            {pct}% (auto-approve bar: {Math.round(threshold * 100)}%)
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-3)]">
+            Model confidence
+          </span>
+          <span className="font-semibold text-[var(--ink)]">
+            {pct}%{" "}
+            <span className="font-normal text-[var(--ink-3)]">
+              · auto-clear bar {Math.round(threshold * 100)}%
+            </span>
           </span>
         </div>
-        <div className="relative h-2 rounded-full bg-zinc-200">
+        {/* meter: fill carries state, track is a lighter step of the same ramp */}
+        <div
+          className="relative h-1.5 rounded-full"
+          style={{ background: above ? "#ede7fd" : "#fdf3d7" }}
+        >
           <div
-            className={`h-2 rounded-full ${diagnosis.confidence >= threshold ? "bg-emerald-500" : "bg-amber-500"}`}
-            style={{ width: `${pct}%` }}
+            className="h-1.5 rounded-full"
+            style={{ width: `${pct}%`, background: above ? "var(--brand)" : "#d97706" }}
           />
           <div
-            className="absolute top-[-3px] h-3.5 w-0.5 bg-zinc-700"
+            className="absolute top-[-3px] h-3 w-0.5 rounded bg-[var(--ink)]"
             style={{ left: `${threshold * 100}%` }}
-            title={`threshold ${threshold}`}
+            title={`auto-clear threshold ${Math.round(threshold * 100)}%`}
           />
         </div>
       </div>
 
-      <p className="text-zinc-700">{diagnosis.reasoning}</p>
+      <p className="leading-relaxed text-[var(--ink-2)]">{diagnosis.reasoning}</p>
 
       {diagnosis.evidenceQuotes.length > 0 && (
         <div>
-          <div className="mb-1 text-xs uppercase tracking-wide text-zinc-500">
-            Cited evidence (verbatim from reviews)
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-3)]">
+            Cited evidence — verbatim from reviews
           </div>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {diagnosis.evidenceQuotes.map((q, i) => (
-              <li key={i} className="border-l-2 border-zinc-300 pl-2 italic text-zinc-600">
+              <li
+                key={i}
+                className="rounded-r-lg border-l-2 bg-white py-1.5 pl-3 pr-2 italic leading-snug text-[var(--ink-2)]"
+                style={{ borderColor: cause?.color ?? "var(--line)" }}
+              >
                 “{q}”
               </li>
             ))}
@@ -57,25 +65,23 @@ export default function DiagnosisPanel({
       )}
 
       {!diagnosis.evidenceValid && (
-        <p className="rounded bg-amber-50 px-2 py-1 text-amber-800">
-          ⚠ Cited evidence could not be verified against source reviews — confidence downgraded,
-          case sent to a human.
+        <p className="flex items-start gap-1.5 rounded-lg bg-[#fdf3d7] px-3 py-2 font-medium text-[#92400e]">
+          <span aria-hidden>⚠</span> Cited evidence could not be verified against source reviews —
+          confidence downgraded, case routed to a human.
         </p>
       )}
 
       {diagnosis.secondaryHypothesis && (
-        <p className="text-zinc-500">
-          Dissenting hypothesis:{" "}
-          <span className="font-medium text-zinc-700">
-            {CAUSE_LABELS[diagnosis.secondaryHypothesis]}
-          </span>
+        <p className="flex items-center gap-2 text-[var(--ink-3)]">
+          Dissenting hypothesis <CauseChip cause={diagnosis.secondaryHypothesis} small />
         </p>
       )}
 
       {diagnosis.flaggedReviews.length > 0 && (
-        <p className="rounded bg-red-50 px-2 py-1 text-red-800">
-          ⚠ {diagnosis.flaggedReviews.length} review(s) quarantined as suspected prompt injection
-          ({diagnosis.flaggedReviews.join(", ")}) — excluded from the evidence the model saw.
+        <p className="flex items-start gap-1.5 rounded-lg bg-[#fdeaec] px-3 py-2 font-medium text-[#b30012]">
+          <span aria-hidden>⛨</span> {diagnosis.flaggedReviews.length} review(s) quarantined as
+          suspected prompt injection ({diagnosis.flaggedReviews.join(", ")}) — excluded from the
+          corpus before the model saw it.
         </p>
       )}
     </div>

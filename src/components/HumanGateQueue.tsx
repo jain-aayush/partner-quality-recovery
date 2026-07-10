@@ -15,30 +15,36 @@ function CaseActions({
   const highStakes = c.policy.stakes === "high" || c.policy.incomeAffecting;
 
   return (
-    <div className="mt-3 space-y-2 rounded-lg border border-dashed border-zinc-300 p-3">
-      <div className="text-xs text-zinc-500">
-        <span className="font-semibold text-zinc-700">Needs human decision:</span> {c.gate.reason}
+    <div className="mt-3 space-y-2.5 rounded-xl border border-[var(--line)] bg-[var(--page)] p-3.5">
+      <div className="text-[12px] leading-relaxed text-[var(--ink-2)]">
+        <span className="font-bold text-[var(--ink)]">Awaiting your decision.</span>{" "}
+        {c.gate.reason}
       </div>
       {highStakes && (
-        <textarea
-          value={rationale}
-          onChange={(e) => setRationale(e.target.value)}
-          placeholder="Required: record your rationale before approving an income-affecting action…"
-          className="w-full rounded-md border border-zinc-300 p-2 text-sm"
-          rows={2}
-        />
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-3)]">
+            Decision rationale — required for income-affecting actions
+          </label>
+          <textarea
+            value={rationale}
+            onChange={(e) => setRationale(e.target.value)}
+            placeholder="Record what evidence you reviewed and why you're approving…"
+            className="w-full rounded-lg border border-[var(--line)] bg-white p-2.5 text-[13px] outline-none focus:border-[var(--brand)]"
+            rows={2}
+          />
+        </div>
       )}
       <div className="flex gap-2">
         <button
           disabled={highStakes && rationale.trim().length === 0}
           onClick={() => onDecide("approved", rationale.trim() || undefined)}
-          className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+          className="rounded-lg bg-[var(--ink)] px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#212121] disabled:cursor-not-allowed disabled:bg-[#c9c9c9]"
         >
           Approve
         </button>
         <button
           onClick={() => onDecide("rejected")}
-          className="rounded-md bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-300"
+          className="rounded-lg border border-[var(--line)] bg-white px-4 py-2 text-[13px] font-bold text-[var(--ink-2)] transition-colors hover:bg-[var(--page)]"
         >
           Reject
         </button>
@@ -84,7 +90,9 @@ export default function HumanGateQueue({
         );
       })}
       {pending.length === 0 && cases.length > 0 && (
-        <p className="text-center text-sm text-zinc-500">Queue cleared — all cases decided.</p>
+        <p className="rounded-xl border border-dashed border-[var(--line)] bg-white py-4 text-center text-[13px] font-medium text-[var(--ink-3)]">
+          Queue cleared — every case has a named human decision.
+        </p>
       )}
     </div>
   );

@@ -1,27 +1,25 @@
 import { PolicyEntry } from "../lib/types";
 
-const STAKES_STYLES: Record<string, string> = {
-  low: "bg-emerald-100 text-emerald-800",
-  medium: "bg-amber-100 text-amber-800",
-  high: "bg-red-100 text-red-800",
+const STAKES: Record<string, { label: string; cls: string }> = {
+  low: { label: "Low stakes", cls: "bg-[#eef7ee] text-[#2e7d32]" },
+  medium: { label: "Medium stakes", cls: "bg-[#fdf3d7] text-[#92400e]" },
+  high: { label: "High stakes", cls: "bg-[#fdeaec] text-[#b30012]" },
 };
 
 export default function InterventionBadge({ policy }: { policy: PolicyEntry }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
-      <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-sm font-medium text-zinc-800">
-        {policy.intervention}
-      </span>
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[13px] font-semibold text-[var(--ink)]">{policy.intervention}</span>
       <span
-        className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${STAKES_STYLES[policy.stakes]}`}
+        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${STAKES[policy.stakes].cls}`}
       >
-        {policy.stakes} stakes
+        {STAKES[policy.stakes].label}
       </span>
       {policy.incomeAffecting && (
-        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold uppercase text-white">
-          income-affecting
+        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--bad)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+          Income-affecting
         </span>
       )}
-    </span>
+    </div>
   );
 }

@@ -210,7 +210,7 @@ for (let i = 0; i < 50; i++) {
   const recipe = partnerRecipe(i);
   const services =
     recipe.trueCause === "skill_gap"
-      ? ["Hair Coloring", ...Array.from({ length: randInt(1, 2) }, () => pick(SERVICES.filter((s) => s !== "Hair Coloring")))]
+      ? Array.from(new Set(["Hair Coloring", ...Array.from({ length: randInt(1, 2) }, () => pick(SERVICES.filter((s) => s !== "Hair Coloring")))]))
       : Array.from(new Set(Array.from({ length: randInt(2, 4) }, () => pick(SERVICES))));
 
   // South Delhi skews slightly better, per the case study
