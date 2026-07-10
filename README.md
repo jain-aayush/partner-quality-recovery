@@ -3,7 +3,7 @@
 A per-partner **diagnose → intervene → monitor** system for recovering underperforming service-marketplace partners (Urban Company beauty-category case study).
 
 - Screens the bottom cohort with a deterministic metric rule, diagnoses **why** each partner is failing from review text + booking behaviour, prescribes the matching intervention via a transparent policy table — and keeps **every income-affecting decision behind a human gate**.
-- Full product plan (problem, metrics, governance, roadmap): [`PLAN.md`](./PLAN.md) · original case study: [`capstone_details.md`](./capstone_details.md)
+- Original case study: [`capstone_details.md`](./capstone_details.md) · contributor guidelines: [`CLAUDE.md`](./CLAUDE.md)
 
 ## Run it
 

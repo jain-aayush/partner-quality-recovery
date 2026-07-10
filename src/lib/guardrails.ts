@@ -53,7 +53,7 @@ const normalize = (s: string) =>
 /**
  * Every quote must be verbatim from a clean source review. Quotes that aren't are dropped;
  * if none survive, confidence is capped below the auto-approve threshold so the case
- * always reaches a human ("no quote → downgrade", PLAN §8.5).
+ * always reaches a human — no quote, no autonomy.
  */
 export function validateEvidence(diagnosis: Diagnosis, cleanReviews: Review[]): Diagnosis {
   if (diagnosis.rootCause === "insufficient_evidence") return diagnosis;

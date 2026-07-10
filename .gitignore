@@ -43,3 +43,6 @@ next-env.d.ts
 # local agent rules
 CLAUDE.local.md
 .claude/
+
+# product plan is a local working doc, not part of the repo
+PLAN.md
