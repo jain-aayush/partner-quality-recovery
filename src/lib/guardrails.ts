@@ -40,7 +40,7 @@ export function detectInjection(text: string): boolean {
   return INJECTION_PATTERNS.some((p) => p.test(text));
 }
 
-const normalize = (s: string) =>
+export const normalize = (s: string) =>
   s
     .toLowerCase()
     .replace(/[‘’]/g, "'")

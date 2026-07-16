@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "generate": "tsx data/generate.ts",
-    "eval": "tsx evals/run.ts"
+    "generate:tags": "tsx data/generateTagCorpus.ts",
+    "eval": "tsx evals/run.ts && tsx evals/tags.ts",
+    "eval:tags": "tsx evals/tags.ts",
+    "sample:llm-tags": "tsx --env-file-if-exists=.env evals/sampleLlmTags.ts"
   },
   "dependencies": {
     "next": "16.2.10",

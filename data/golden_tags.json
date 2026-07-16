@@ -1,0 +1,115 @@
+[
+  {
+    "review_id": "G1",
+    "problem_classes": [
+      "skill_issue"
+    ],
+    "severity": 3,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G2",
+    "problem_classes": [
+      "time"
+    ],
+    "severity": 2,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G3",
+    "problem_classes": [
+      "undisclosed_supplies"
+    ],
+    "severity": 3,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G4",
+    "problem_classes": [
+      "unfair_review"
+    ],
+    "severity": 2,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G5",
+    "problem_classes": [],
+    "severity": 1,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G6",
+    "problem_classes": [],
+    "severity": 1,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G7",
+    "problem_classes": [],
+    "severity": 4,
+    "safety_flag": true
+  },
+  {
+    "review_id": "G8",
+    "problem_classes": [],
+    "severity": 4,
+    "safety_flag": true
+  },
+  {
+    "review_id": "G9",
+    "problem_classes": [],
+    "severity": 4,
+    "safety_flag": true
+  },
+  {
+    "review_id": "G10",
+    "problem_classes": [
+      "out_of_taxonomy"
+    ],
+    "severity": 2,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G11",
+    "problem_classes": [
+      "pricing"
+    ],
+    "severity": 2,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G12",
+    "problem_classes": [
+      "partner_attitude"
+    ],
+    "severity": 3,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G13",
+    "problem_classes": [],
+    "severity": 1,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G14",
+    "problem_classes": [
+      "skill_issue",
+      "time"
+    ],
+    "severity": 3,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G15",
+    "problem_classes": [],
+    "severity": 1,
+    "safety_flag": false
+  },
+  {
+    "review_id": "G16",
+    "problem_classes": [],
+    "severity": 1,
+    "safety_flag": false
+  }
+]

@@ -1,0 +1,842 @@
+[
+  {
+    "customer_id": "c001",
+    "karma": 0.2,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c002",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c003",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c004",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c005",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c006",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c007",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c008",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c009",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c010",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c011",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c012",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c013",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c014",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c015",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c016",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c017",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c018",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c019",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c020",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c021",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c022",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c023",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c024",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c025",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c026",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c027",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c028",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c029",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c030",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c031",
+    "karma": 0.2,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c032",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c033",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c034",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c035",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c036",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c037",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c038",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c039",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c040",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c041",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c042",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c043",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c044",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c045",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c046",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c047",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c048",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c049",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c050",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c051",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c052",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c053",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c054",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c055",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c056",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c057",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c058",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c059",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c060",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c061",
+    "karma": 0.2,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c062",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c063",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c064",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c065",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c066",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c067",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c068",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c069",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c070",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c071",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c072",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c073",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c074",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c075",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c076",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c077",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c078",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c079",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c080",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c081",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c082",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c083",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c084",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c085",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c086",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c087",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c088",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c089",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c090",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c091",
+    "karma": 0.2,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c092",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c093",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c094",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c095",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c096",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c097",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c098",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c099",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c100",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c101",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c102",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c103",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c104",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c105",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c106",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c107",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c108",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c109",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c110",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c111",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c112",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c113",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c114",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c115",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c116",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c117",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c118",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c119",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c120",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c121",
+    "karma": 0.2,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c122",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c123",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c124",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c125",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c126",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c127",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c128",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c129",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c130",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c131",
+    "karma": 0.2,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c132",
+    "karma": 0.82,
+    "aov_band": "high",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c133",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c134",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c135",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c136",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c137",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "high"
+  },
+  {
+    "customer_id": "c138",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  },
+  {
+    "customer_id": "c139",
+    "karma": 0.55,
+    "aov_band": "low",
+    "ltv_band": "low"
+  },
+  {
+    "customer_id": "c140",
+    "karma": 0.55,
+    "aov_band": "med",
+    "ltv_band": "med"
+  }
+]

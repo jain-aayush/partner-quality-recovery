@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -39,9 +40,8 @@ export default function RootLayout({
               </div>
             </div>
             <div className="mx-2 h-7 w-px bg-[var(--line)]" />
-            <div className="text-[15px] font-semibold text-[var(--ink-2)]">
-              Partner Quality Recovery
-            </div>
+            <Link href="/" className="text-[15px] font-semibold text-[var(--ink-2)]">Partner Quality Recovery</Link>
+            <Link href="/system1" className="rounded-md px-2 py-1 text-[12px] font-semibold text-[var(--brand-deep)] hover:bg-[#f2f0ff]">System 1</Link>
             <div className="ml-auto hidden items-center gap-2 text-[13px] font-medium text-[var(--ink-3)] sm:flex">
               Beauty · Delhi NCR
               <span className="rounded-full border border-[var(--line)] bg-[var(--page)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-2)]">
