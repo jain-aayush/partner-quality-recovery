@@ -4,16 +4,22 @@
  * customer's rating OF THE ORDER. A multi-SKU order's complaint is attributed to the SKU the review
  * names — co-services are delivered-without-complaint (they count as bookings, never as a complaint
  * on an innocent SKU). Bookings denominator = distinct order_ids per partner × SKU. Ground-truth-free.
+ *
+ * Intervention history (the `intervention` / `intervention_date` columns) is read as a per-SKU
+ * event log: each row carries the latest intervention on-or-before its order date, so distinct
+ * (kind, date) pairs reconstruct the §1b escalation-ladder state deterministically.
  */
 
 import { aggregate, needsAttention, TaggedReview } from "./aggregate";
 import { decide } from "./decide";
 import { diagnoseSku } from "./diagnose2";
-import { Band, CaseReview, Customer, Decision, Diagnosis, ExcludedSummary, Progress, ProblemClass, ProgressStatus, Review, ReviewTag, SkuAggregate, WeekBucket } from "./model";
+import { Band, CaseReview, Customer, Decision, Diagnosis, ExcludedSummary, LadderState, NO_LADDER_HISTORY, Progress, ProblemClass, ProgressStatus, Review, ReviewTag, SkuAggregate, WeekBucket } from "./model";
 import { tagReview } from "./tag";
 import { reviewWeight, THRESHOLDS } from "./thresholds";
 
 const DECISION_WINDOW_DAYS = 35; // "this cycle" = the most recent 5 weeks of orders
+const DAY_MS = 86400000;
+const WEEK_MS = 7 * DAY_MS;
 
 export interface OrderRow {
   orderId: string; partnerId: string; partnerName: string; zone: string; customerId: string;
@@ -32,7 +38,7 @@ export interface SkuCase {
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const shortDate = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MONTHS[(m || 1) - 1]}`; };
+const shortDate = (ms: number) => { const d = new Date(ms); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`; };
 
 /** A review counted against the partner: a safety event, or a classified negative about the partner (or a protective unfair claim). */
 const isCounted = (t: ReviewTag): boolean =>
@@ -41,18 +47,20 @@ const isCounted = (t: ReviewTag): boolean =>
     (t.target === "partner" || t.problemClasses.includes("unfair_review")) &&
     t.problemClasses.length > 0);
 
-/** Weekly complaints/bookings, the verbatim counted complaints, and a tally of what was set aside. */
+/** Weekly complaints/bookings (true 7-day buckets — daily-dated uploads bucket correctly), the verbatim counted complaints, and a tally of what was set aside. */
 function caseDetail(items: TaggedReview[]): { weekly: WeekBucket[]; complaints: CaseReview[]; excluded: ExcludedSummary } {
-  const byDate = new Map<string, { orders: Set<string>; complaints: number }>();
+  const minMs = Math.min(...items.map((it) => Date.parse(it.review.date)));
+  const byBucket = new Map<number, { orders: Set<string>; complaints: number }>();
   for (const it of items) {
-    const b = byDate.get(it.review.date) ?? { orders: new Set<string>(), complaints: 0 };
+    const idx = Math.floor((Date.parse(it.review.date) - minMs) / WEEK_MS);
+    const b = byBucket.get(idx) ?? { orders: new Set<string>(), complaints: 0 };
     b.orders.add(orderIdOf(it.review.id));
     if (isCounted(it.tag)) b.complaints++;
-    byDate.set(it.review.date, b);
+    byBucket.set(idx, b);
   }
-  const weekly: WeekBucket[] = [...byDate.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, b]) => ({ label: shortDate(date), bookings: b.orders.size, complaints: b.complaints, rate: b.orders.size ? Number((b.complaints / b.orders.size).toFixed(4)) : 0 }));
+  const weekly: WeekBucket[] = [...byBucket.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([idx, b]) => ({ label: shortDate(minMs + idx * WEEK_MS), bookings: b.orders.size, complaints: b.complaints, rate: b.orders.size ? Number((b.complaints / b.orders.size).toFixed(4)) : 0 }));
 
   const complaints: CaseReview[] = items
     .filter((it) => isCounted(it.tag))
@@ -83,6 +91,7 @@ const toReview = (r: OrderRow): Review => ({ id: `${r.orderId}::${r.sku}`, partn
 const toCustomer = (r: OrderRow): Customer => ({ id: r.customerId, karma: r.karma, aovBand: r.aovBand, ltvBand: r.aovBand });
 const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
 const orderIdOf = (reviewId: string) => reviewId.split("::")[0];
+const keyOf = (partnerId: string, sku: string) => `${partnerId}|${sku}`;
 
 // SKU-name detection so a multi-SKU order's complaint lands on the right service.
 const SKU_ALIASES: Record<string, string[]> = {
@@ -128,16 +137,61 @@ export function tagOrders(rows: OrderRow[]): TaggedReview[] {
 /** Distinct order count per partner × SKU — the derived bookings denominator. */
 function orderCounts(rows: OrderRow[]): Map<string, number> {
   const seen = new Map<string, Set<string>>();
-  for (const r of rows) (seen.get(`${r.partnerId}|${r.sku}`) ?? seen.set(`${r.partnerId}|${r.sku}`, new Set()).get(`${r.partnerId}|${r.sku}`)!).add(r.orderId);
+  for (const r of rows) (seen.get(keyOf(r.partnerId, r.sku)) ?? seen.set(keyOf(r.partnerId, r.sku), new Set()).get(keyOf(r.partnerId, r.sku))!).add(r.orderId);
   const out = new Map<string, number>();
   for (const [k, s] of seen) out.set(k, s.size);
   return out;
 }
 
-/** Tolerant CSV parse — snake_case order headers; missing optionals default sensibly. */
-export function parseUnifiedCsv(text: string): OrderRow[] {
+/** The per-SKU intervention event log: distinct (kind, date) pairs, date-ascending. */
+export interface InterventionEvent { kind: string; date: string }
+function interventionHistory(rows: OrderRow[]): Map<string, InterventionEvent[]> {
+  const byKey = new Map<string, Map<string, string>>();
+  for (const r of rows) {
+    if (!r.interventionDate || !r.intervention) continue;
+    const k = keyOf(r.partnerId, r.sku);
+    (byKey.get(k) ?? byKey.set(k, new Map()).get(k)!).set(r.interventionDate, r.intervention);
+  }
+  const out = new Map<string, InterventionEvent[]>();
+  for (const [k, m] of byKey) {
+    out.set(k, [...m.entries()].map(([date, kind]) => ({ kind, date })).sort((a, b) => a.date.localeCompare(b.date)));
+  }
+  return out;
+}
+
+const isSoftBan = (kind: string) => kind === "soft_ban" || kind === "protective_soft_ban";
+
+/** §1b ladder state per partner × SKU, from the intervention log + the monitor's verdict. */
+function deriveLadder(
+  events: InterventionEvent[],
+  stillFailing: boolean,
+  maxMs: number,
+): LadderState {
+  const softBans = events.filter((e) => isSoftBan(e.kind));
+  const strikes = softBans.filter((e) => Date.parse(e.date) >= maxMs - THRESHOLDS.softBanWindowDays * DAY_MS).length;
+  const lastSoftBan = softBans[softBans.length - 1];
+  return {
+    coachingCycles: events.filter((e) => !isSoftBan(e.kind) && e.kind !== "hard_ban").length,
+    softBanStrikes: strikes,
+    daysSinceLastSoftBan: lastSoftBan ? Math.floor((maxMs - Date.parse(lastSoftBan.date)) / DAY_MS) : null,
+    stillFailing,
+  };
+}
+
+/** CSV parse result: valid rows, row-level validation issues, and rows routed to the analyst back-fill queue. */
+export interface CsvParseResult { rows: OrderRow[]; issues: string[]; backfillCount: number }
+
+/**
+ * Validating CSV parse — snake_case order headers. A missing/invalid rating is NEVER defaulted
+ * to 5★: the row goes to the analyst back-fill queue (PRD). Malformed dates and SKU-less rows
+ * are reported per-row, not silently dropped. Missing karma defaults to a NEUTRAL 0.5 — an
+ * unknown reviewer is not a trusted one.
+ */
+export function parseUnifiedCsv(text: string): CsvParseResult {
+  const issues: string[] = [];
+  let backfillCount = 0;
   const lines = text.trim().split(/\r?\n/).filter((l) => l.length);
-  if (lines.length < 2) return [];
+  if (lines.length < 2) return { rows: [], issues: ["No data rows found."], backfillCount };
   const cells = (line: string): string[] => {
     const out: string[] = []; let cur = "", q = false;
     for (let i = 0; i < line.length; i++) {
@@ -149,45 +203,80 @@ export function parseUnifiedCsv(text: string): OrderRow[] {
   };
   const header = cells(lines[0]).map((h) => h.trim());
   const at = (k: string) => header.indexOf(k);
-  return lines.slice(1).map((line, i) => {
+  const missingCols = ["partner_id", "sku", "order_date", "rating", "review_text"].filter((k) => at(k) < 0);
+  if (missingCols.length > 0) {
+    return { rows: [], issues: [`Missing required column(s): ${missingCols.join(", ")}. Compare with the sample CSV.`], backfillCount };
+  }
+
+  const rows: OrderRow[] = [];
+  const flag = (msg: string) => { if (issues.length < 20) issues.push(msg); };
+  lines.slice(1).forEach((line, i) => {
+    const rowNo = i + 2; // 1-based, counting the header
     const c = cells(line);
     const g = (k: string, d = "") => (at(k) >= 0 ? (c[at(k)] ?? d).trim() : d);
-    const karma = Number(g("karma", "0.8"));
+
+    const partnerId = g("partner_id");
+    if (!partnerId) { flag(`Row ${rowNo}: missing partner_id — skipped.`); return; }
+    const sku = g("sku");
+    if (!sku) { flag(`Row ${rowNo}: missing sku — skipped; flagged for analyst review.`); return; }
+    const orderDate = g("order_date");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(orderDate) || Number.isNaN(Date.parse(orderDate))) {
+      flag(`Row ${rowNo}: order_date "${orderDate}" is not a valid YYYY-MM-DD date — skipped.`);
+      return;
+    }
+    const rating = Number(g("rating"));
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      backfillCount++; // null/invalid rating → analyst back-fill queue, never a silent 5★
+      return;
+    }
+
+    const karmaRaw = g("karma");
+    const karma = Number(karmaRaw);
     const aov = g("aov_band", "medium") as Band;
-    return {
-      orderId: g("order_id", `o${i}`), partnerId: g("partner_id"), partnerName: g("partner_name", g("partner_id")),
-      zone: g("zone", "—"), customerId: g("customer_id", `c${i}`), karma: Number.isFinite(karma) ? karma : 0.8,
-      aovBand: ["low", "medium", "high"].includes(aov) ? aov : "medium", sku: g("sku"), orderDate: g("order_date"),
-      rating: Number(g("rating", "5")) || 5, reviewText: g("review_text"),
+    rows.push({
+      orderId: g("order_id", `o${i}`), partnerId, partnerName: g("partner_name", partnerId),
+      zone: g("zone", "—"), customerId: g("customer_id", `c${i}`),
+      karma: karmaRaw !== "" && Number.isFinite(karma) && karma >= 0 && karma <= 1 ? karma : 0.5,
+      aovBand: ["low", "medium", "high"].includes(aov) ? aov : "medium", sku, orderDate,
+      rating, reviewText: g("review_text"),
       intervention: g("intervention", ""), interventionDate: g("intervention_date", ""),
-    };
-  }).filter((r) => r.partnerId && r.sku && r.orderDate);
+    });
+  });
+  if (backfillCount > 0) {
+    issues.push(`${backfillCount} row(s) with a missing/invalid rating routed to the analyst back-fill queue (not counted as 5★).`);
+  }
+  return { rows, issues, backfillCount };
 }
 
 export function runFromRows(rows: OrderRow[]): UnifiedResult {
   const nameOf = new Map(rows.map((r) => [r.partnerId, r.partnerName]));
   const zoneOf = (p: string) => rows.find((r) => r.partnerId === p)?.zone ?? "—";
+  const maxMs = Math.max(...rows.map((r) => Date.parse(r.orderDate)));
+
+  // ── monitor first: progress over the full record feeds ladder state into this cycle's decisions ──
+  const history = interventionHistory(rows);
+  const progress = computeProgress(rows);
+  const stillFailingByKey = new Map(progress.map((p) => [keyOf(p.partnerId, p.sku), p.status === "stalled"]));
+  const ladderByKey = new Map<string, LadderState>();
+  for (const [k, events] of history) {
+    ladderByKey.set(k, deriveLadder(events, stillFailingByKey.get(k) ?? false, maxMs));
+  }
 
   // ── this cycle's decisions: most recent window only ──
-  const maxMs = Math.max(...rows.map((r) => Date.parse(r.orderDate)));
-  const windowStart = maxMs - DECISION_WINDOW_DAYS * 86400000;
+  const windowStart = maxMs - DECISION_WINDOW_DAYS * DAY_MS;
   const win = rows.filter((r) => Date.parse(r.orderDate) >= windowStart);
 
   const counts = orderCounts(win);
-  const bookings = (p: string, s: string) => counts.get(`${p}|${s}`) ?? 0;
+  const bookings = (p: string, s: string) => counts.get(keyOf(p, s)) ?? 0;
 
   const tagged = tagOrders(win); // attributed per SKU
   const tagsByKey = new Map<string, ReviewTag[]>();
   const itemsByKey = new Map<string, TaggedReview[]>();
   for (const t of tagged) {
-    const k = `${t.tag.partnerId}|${t.tag.sku}`;
+    const k = keyOf(t.tag.partnerId, t.tag.sku);
     (tagsByKey.get(k) ?? tagsByKey.set(k, []).get(k)!).push(t.tag);
     (itemsByKey.get(k) ?? itemsByKey.set(k, []).get(k)!).push(t);
   }
-
-  // Prior-coaching history (repeat concern) — any intervention on this partner × SKU in the full record.
-  const coachedKey = new Set<string>();
-  for (const r of rows) if (r.interventionDate) coachedKey.add(`${r.partnerId}|${r.sku}`);
 
   const aggs = aggregate(tagged, bookings, zoneOf);
 
@@ -201,84 +290,116 @@ export function runFromRows(rows: OrderRow[]): UnifiedResult {
   const cases: SkuCase[] = aggs
     .filter((a) => flagged.has(a.partnerId))
     .map((row) => {
-      const k = `${row.partnerId}|${row.sku}`;
+      const k = keyOf(row.partnerId, row.sku);
       const dx = diagnoseSku(row, tagsByKey.get(k) ?? []);
       const detail = caseDetail(itemsByKey.get(k) ?? []);
-      return { row, diagnosis: dx, decision: decide(row, dx), ...detail, priorCoached: coachedKey.has(k) };
+      return {
+        row,
+        diagnosis: dx,
+        decision: decide(row, dx, ladderByKey.get(k) ?? NO_LADDER_HISTORY),
+        ...detail,
+        priorCoached: history.has(k),
+      };
     });
 
-  // unimprovable → offboard candidate only when a majority of active SKUs are coached-and-still-failing
+  // unimprovable is DERIVED, never diagnosed: a partner whose ladder is exhausted (3 strikes in
+  // the rolling window, monitor still failing, not low-N) on a majority of active SKUs becomes a
+  // platform offboard candidate — a human makes the final call. A single failed SKU stays a
+  // per-SKU hard-ban candidate, never a platform offboard.
   const byPartner = new Map<string, SkuCase[]>();
   for (const c of cases) (byPartner.get(c.row.partnerId) ?? byPartner.set(c.row.partnerId, []).get(c.row.partnerId)!).push(c);
   const partners: PartnerRollup[] = [];
+  const exhausted = (c: SkuCase): boolean => {
+    const l = ladderByKey.get(keyOf(c.row.partnerId, c.row.sku));
+    return !!l && l.stillFailing && l.softBanStrikes >= THRESHOLDS.softBanMax && !c.row.lowN;
+  };
   for (const [p, list] of byPartner) {
     const activeSkus = list.length;
     const failingSkus = list.filter((c) => needsAttention(c.row)).length;
-    const exhausted = list.filter((c) => needsAttention(c.row) && coachedKey.has(`${c.row.partnerId}|${c.row.sku}`)).length;
+    const exhaustedSkus = list.filter((c) => needsAttention(c.row) && c.decision.track !== "safety" && exhausted(c)).length;
     const partnerAvg = avg(ratingByPartner.get(p) ?? [5]);
-    const unimprovable = activeSkus > 1 && exhausted / activeSkus >= THRESHOLDS.offboardMajority;
+    const unimprovable = activeSkus > 1 && exhaustedSkus / activeSkus >= THRESHOLDS.offboardMajority;
     if (unimprovable) {
-      for (const c of list) if (needsAttention(c.row) && c.decision.track !== "safety") {
-        c.decision = { ...c.decision, cause: "unimprovable", actions: ["offboard"], incomeAffecting: true, grain: "platform", gate: "human_required", gateReason: `Unimprovable — coached but still failing ${failingSkus}/${activeSkus} active SKUs (majority). Platform offboard candidate; human decides.` };
+      for (const c of list) if (needsAttention(c.row) && c.decision.track !== "safety" && exhausted(c)) {
+        c.decision = { ...c.decision, cause: "unimprovable", actions: ["offboard"], immediateActions: [], incomeAffecting: true, grain: "platform", gate: "human_required", gateReason: `Unimprovable — full ladder exhausted (coaching + ${THRESHOLDS.softBanMax} soft-ban strikes, still failing) on ${exhaustedSkus}/${activeSkus} active SKUs (majority). Platform offboard candidate; human decides.` };
       }
     }
     partners.push({ partnerId: p, name: nameOf.get(p) ?? p, zone: zoneOf(p), avgRating: Number(partnerAvg.toFixed(2)), activeSkus, failingSkus, unimprovable });
   }
 
-  return { cases, partners, progress: computeProgress(rows), config: THRESHOLDS };
+  return { cases, partners, progress, config: THRESHOLDS };
 }
 
-/** Progress tracker — only partner × SKU with an intervention_date; attributed complaints ÷ orders. */
+/**
+ * Progress tracker — every partner × SKU with an intervention event log. Rates are attributed
+ * complaints ÷ orders in true 7-day buckets. The 15-day check scores ONLY when the post window
+ * has at least MIN_BOOKINGS_FLOOR bookings — below the floor the window is extended, never
+ * scored as recovered and never a strike (a near-zero-volume week can't fake a recovery).
+ */
 export function computeProgress(rows: OrderRow[]): Progress[] {
-  const weeks = [...new Set(rows.map((r) => r.orderDate))].sort();
-  const wIdx = new Map(weeks.map((d, i) => [d, i]));
-  const allTagged = tagOrders(rows);
-  const ACTION_LABEL: Record<string, string> = { skill_training: "Free training", warning_scrutiny: "Warning + watch", supply_kit: "Supply kit", protective_soft_ban: "7-day pause + coaching" };
+  const history = interventionHistory(rows);
+  if (history.size === 0) return [];
+  const minMs = Math.min(...rows.map((r) => Date.parse(r.orderDate)));
+  const maxMs = Math.max(...rows.map((r) => Date.parse(r.orderDate)));
+  const bucketOf = (date: string) => Math.floor((Date.parse(date) - minMs) / WEEK_MS);
+  const nWeeks = bucketOf(new Date(maxMs).toISOString().slice(0, 10)) + 1;
 
-  const skuGroups = new Map<string, OrderRow[]>();
-  for (const r of rows) if (r.interventionDate) (skuGroups.get(`${r.partnerId}|${r.sku}`) ?? skuGroups.set(`${r.partnerId}|${r.sku}`, []).get(`${r.partnerId}|${r.sku}`)!).push(r);
+  const allTagged = tagOrders(rows);
+  const ACTION_LABEL: Record<string, string> = { skill_training: "Free training", warning_scrutiny: "Warning + watch", supply_kit: "Supply kit", protective_soft_ban: "7-day pause + coaching", soft_ban: "7-day soft-ban" };
 
   const out: Progress[] = [];
-  for (const [gk, groupRows] of skuGroups) {
+  for (const [gk, events] of history) {
     const [partnerId, sku] = gk.split("|");
+    const groupRows = rows.filter((r) => r.partnerId === partnerId && r.sku === sku);
     const tags = allTagged.filter((t) => t.tag.partnerId === partnerId && t.tag.sku === sku);
     const tally: Partial<Record<ProblemClass, number>> = {};
     for (const t of tags) if (t.tag.sentiment === "negative") for (const c of t.tag.problemClasses) tally[c] = (tally[c] ?? 0) + reviewWeight(t.tag.customer.karma, t.tag.customer.highValue);
     const cause = (Object.entries(tally).sort((a, b) => b[1]! - a[1]!)[0]?.[0] as ProblemClass) ?? "skill_issue";
 
-    const orders = new Array(weeks.length).fill(0).map(() => new Set<string>());
-    for (const r of groupRows) orders[wIdx.get(r.orderDate)!].add(r.orderId);
-    const wtd = new Array(weeks.length).fill(0);
-    for (const t of tags) if (t.tag.sentiment === "negative" && t.tag.problemClasses.includes(cause)) wtd[wIdx.get(t.review.date)!] += reviewWeight(t.tag.customer.karma, t.tag.customer.highValue);
-    const series = weeks.map((_, w) => ({ label: `W${w + 1}`, rate: orders[w].size > 0 ? Number((wtd[w] / orders[w].size).toFixed(4)) : 0 }));
+    const orders = new Array(nWeeks).fill(0).map(() => new Set<string>());
+    for (const r of groupRows) orders[bucketOf(r.orderDate)].add(r.orderId);
+    const wtd = new Array(nWeeks).fill(0);
+    for (const t of tags) if (t.tag.sentiment === "negative" && t.tag.problemClasses.includes(cause)) wtd[bucketOf(t.review.date)] += reviewWeight(t.tag.customer.karma, t.tag.customer.highValue);
+    const series = Array.from({ length: nWeeks }, (_, w) => ({ label: `W${w + 1}`, rate: orders[w].size > 0 ? Number((wtd[w] / orders[w].size).toFixed(4)) : 0 }));
 
-    const interventionWeek = wIdx.get(groupRows[0].interventionDate) ?? series.reduce((b, s, i) => (s.rate > series[b].rate ? i : b), 0);
+    const last = events[events.length - 1];
+    const ladder = deriveLadder(events, false, maxMs);
+    const interventionWeek = Math.min(nWeeks - 1, Math.max(0, bucketOf(last.date)));
     const pre = avg(series.slice(Math.max(0, interventionWeek - 2), interventionWeek).map((s) => s.rate)) || series[Math.max(0, interventionWeek - 1)].rate;
     const measureWeek = interventionWeek + 2;
-    const postSlice = series.slice(measureWeek, measureWeek + 2).map((s) => s.rate);
+    const postSlice = series.slice(measureWeek, measureWeek + 2);
+    const postBookings = orders.slice(measureWeek, measureWeek + 2).reduce((s, o) => s + o.size, 0);
     const measured = postSlice.length > 0;
-    const currentRate = Number((measured ? avg(postSlice) : series[series.length - 1].rate).toFixed(4));
-    const dropPct = pre > 0 ? Math.max(0, (pre - currentRate) / pre) : 0;
-    const daysElapsed = (weeks.length - 1 - interventionWeek) * 7;
+    const floorMet = postBookings >= THRESHOLDS.minBookingsFloor;
+    const scored = measured && floorMet;
+    const currentRate = Number((scored ? avg(postSlice.map((s) => s.rate)) : series[series.length - 1].rate).toFixed(4));
+    const dropPct = scored && pre > 0 ? Math.max(0, (pre - currentRate) / pre) : 0;
+    const daysElapsed = Math.max(0, Math.floor((maxMs - Date.parse(last.date)) / DAY_MS));
     const target = THRESHOLDS.improvementDrop;
 
     let status: ProgressStatus;
-    if (!measured) status = "on_track";
+    if (!scored) status = "on_track";
     else if (dropPct >= target) status = "recovered";
     else if (dropPct >= 0.1) status = "improving";
     else if (dropPct < 0.05) status = "stalled";
     else status = "on_track";
 
-    const action = groupRows[0].intervention || "skill_training";
-    const phase = status === "recovered" ? "Recovered" : status === "stalled" ? "Stalled — escalating" : action === "protective_soft_ban" ? "Soft-ban + coaching" : daysElapsed < 30 ? "Coaching — cycle 1" : "Coaching — cycle 2";
+    const coachingDone = ladder.coachingCycles >= THRESHOLDS.coachingLoopMax;
+    const phase =
+      status === "recovered" ? "Recovered"
+        : ladder.softBanStrikes >= THRESHOLDS.softBanMax && status === "stalled" ? "Ladder exhausted — hard-ban candidate"
+          : isSoftBan(last.kind) ? `Soft-ban strike ${ladder.softBanStrikes}/${THRESHOLDS.softBanMax}`
+            : status === "stalled" && coachingDone ? "Coaching exhausted — soft-ban queued"
+              : `Coaching — cycle ${Math.max(1, ladder.coachingCycles)}/${THRESHOLDS.coachingLoopMax}`;
     const nextCheckDays = status === "recovered" ? 0 : Math.max(0, (daysElapsed < 30 ? 30 : THRESHOLDS.monitorWindowDays) - daysElapsed);
     const note = !measured ? "In training — first 15-day check not due yet."
-      : status === "recovered" ? `15-day check: complaints down ${Math.round(dropPct * 100)}% — passed the 20% bar.`
-        : status === "stalled" ? `15-day check: only ${Math.round(dropPct * 100)}% down — next step is a soft-ban (your call).`
-          : `15-day check: down ${Math.round(dropPct * 100)}% — improving toward the 20% bar.`;
+      : !floorMet ? `Only ${postBookings} booking(s) since the intervention — below the ${THRESHOLDS.minBookingsFloor}-booking floor. Window extended; not scored (no recovery, no strike, on thin volume).`
+        : status === "recovered" ? `15-day check: complaints down ${Math.round(dropPct * 100)}% — passed the ${Math.round(target * 100)}% bar.`
+          : status === "stalled" ? `15-day check: only ${Math.round(dropPct * 100)}% down — next ladder step is queued for your call.`
+            : `15-day check: down ${Math.round(dropPct * 100)}% — improving toward the ${Math.round(target * 100)}% bar.`;
 
     out.push({
-      partnerId, name: groupRows[0].partnerName, zone: groupRows[0].zone, sku, interventionLabel: ACTION_LABEL[action] ?? action,
+      partnerId, name: groupRows[0].partnerName, zone: groupRows[0].zone, sku, interventionLabel: ACTION_LABEL[last.kind] ?? last.kind,
       phase, daysElapsed, windowDays: THRESHOLDS.monitorWindowDays, preRate: Number(pre.toFixed(4)), currentRate,
       dropPct: Number(dropPct.toFixed(2)), targetDrop: target, status, nextCheckDays, note, series, interventionWeek,
     });

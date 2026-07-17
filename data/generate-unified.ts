@@ -152,19 +152,44 @@ const POOL: Record<string, string[]> = {
     "The colour was patchy and she was rude the whole time.",
     "Uneven finish and honestly quite unprofessional too.",
   ],
+  // mixed complaint: a real partner complaint + a pricing gripe in one review — the skill
+  // complaint must still count (the pricing part is routed off-partner, not the whole review)
+  mixed: [
+    "The colour came out patchy and she overcharged me on top of it.",
+    "Uneven finish, and there was a hidden charge at the end too.",
+  ],
+  // Hinglish safety (FM5) — mixed sentiment: a 4★ review that still reports a burn
+  hinglishSafety: [
+    "Service theek thi par thoda jal gaya mera scalp.",
+    "Kaam accha tha lekin thoda jal gaya haath se.",
+  ],
+  // Hinglish neutral — must NOT be over-escalated (FM5's other half)
+  hinglishNeutral: [
+    "Bas thik-thak tha, kuch khaas nahi.",
+    "Theek thaak service thi overall.",
+  ],
+  // quality-severe (severity 4–5, non-safety) → accelerated track
+  severe: [
+    "Absolutely ruined — the colour came out patchy, worst experience ever.",
+    "Total mess, botched and uneven, never again with her.",
+    "Horrible, streaks everywhere and it completely ruined my look.",
+  ],
 };
 
 const RATING: Record<string, number> = {
   positive: 5, skill: 2, time: 2, supplies: 2, attitude: 2, pricing: 2, app: 2, unfair: 2,
   injury: 1, harassment: 1, theft: 1, hygiene: 2, vague: 2, thin: 2, neutral: 3, injection: 5, multiclass: 2,
+  mixed: 2, hinglishSafety: 4, hinglishNeutral: 3, severe: 1,
 };
 
 type Cause = "skill" | "time" | "supplies" | "unfair" | "safety" | "healthy";
-const ACTION: Partial<Record<Cause, string>> = { skill: "skill_training", time: "warning_scrutiny", supplies: "supply_kit" };
+
+/** §1b intervention history for a partner × SKU: each order row carries the latest event on-or-before its date. */
+interface LadderEvent { kind: string; week: number }
 
 interface Recipe {
   id: string; name: string; zone: string; sku: string; cause: Cause;
-  weekly: number[]; opw: number; ivWeek?: number; burnWeek?: number;
+  weekly: number[]; opw: number; ladder?: LadderEvent[]; burnWeek?: number;
 }
 
 // weekly[] = negative-review count that week (out of `opw` orders). The rest are positive orders.
@@ -175,13 +200,16 @@ const R: Recipe[] = [
   { id: "p03", name: "Sunita Yadav", zone: "West Delhi", sku: "Facial", cause: "supplies", weekly: [0, 0, 1, 0, 1, 0, 1, 1, 4, 5, 4, 5], opw: 15 },
   { id: "p04", name: "Meena Gupta", zone: "South Delhi", sku: "Hair Coloring", cause: "unfair", weekly: [0, 1, 0, 1, 0, 1, 1, 0, 4, 5, 4, 4], opw: 15 },
   { id: "p05", name: "Anjali Verma", zone: "East Delhi", sku: "Facial", cause: "safety", weekly: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0], opw: 14, burnWeek: 10 },
-  // Rekha: coached on BOTH services (week 4) but stalled on both → unimprovable → platform offboard
-  { id: "p06", name: "Rekha Mehra", zone: "North Delhi", sku: "Hair Coloring", cause: "skill", weekly: [5, 6, 5, 6, 6, 6, 5, 6, 5, 6, 6, 6], opw: 14, ivWeek: 4 },
-  { id: "p06", name: "Rekha Mehra", zone: "North Delhi", sku: "Makeup", cause: "time", weekly: [5, 5, 6, 5, 6, 5, 6, 5, 5, 6, 5, 6], opw: 13, ivWeek: 4 },
-  // ── already in training (intervention week 4) → progress tracker ──
-  { id: "t01", name: "Anita Rao", zone: "South Delhi", sku: "Hair Coloring", cause: "skill", weekly: [6, 6, 6, 6, 6, 4, 3, 2, 1, 1, 0, 0], opw: 16, ivWeek: 4 },
-  { id: "t02", name: "Sunita Devi", zone: "Central Delhi", sku: "Waxing", cause: "time", weekly: [6, 6, 6, 6, 6, 5, 5, 5, 5, 4, 4, 4], opw: 16, ivWeek: 4 },
-  { id: "t03", name: "Kavya Nair", zone: "North Delhi", sku: "Manicure", cause: "skill", weekly: [6, 6, 6, 6, 6, 6, 6, 6, 5, 6, 5, 6], opw: 16, ivWeek: 4 },
+  // Rekha: full §1b ladder exhausted on BOTH services (2 coaching cycles + 3 soft-ban strikes,
+  // still failing) → derived unimprovable → platform offboard candidate (human decides)
+  { id: "p06", name: "Rekha Mehra", zone: "North Delhi", sku: "Hair Coloring", cause: "skill", weekly: [5, 6, 5, 6, 6, 6, 5, 6, 5, 6, 6, 6], opw: 14, ladder: [{ kind: "skill_training", week: 0 }, { kind: "skill_training", week: 2 }, { kind: "soft_ban", week: 4 }, { kind: "soft_ban", week: 6 }, { kind: "soft_ban", week: 9 }] },
+  { id: "p06", name: "Rekha Mehra", zone: "North Delhi", sku: "Makeup", cause: "time", weekly: [5, 5, 6, 5, 6, 5, 6, 5, 5, 6, 5, 6], opw: 13, ladder: [{ kind: "warning_scrutiny", week: 0 }, { kind: "warning_scrutiny", week: 2 }, { kind: "soft_ban", week: 4 }, { kind: "soft_ban", week: 6 }, { kind: "soft_ban", week: 9 }] },
+  // ── already in training → progress tracker ──
+  { id: "t01", name: "Anita Rao", zone: "South Delhi", sku: "Hair Coloring", cause: "skill", weekly: [6, 6, 6, 6, 6, 4, 3, 2, 1, 1, 0, 0], opw: 16, ladder: [{ kind: "skill_training", week: 4 }] },
+  { id: "t02", name: "Sunita Devi", zone: "Central Delhi", sku: "Waxing", cause: "time", weekly: [6, 6, 6, 6, 6, 5, 5, 5, 5, 4, 4, 4], opw: 16, ladder: [{ kind: "warning_scrutiny", week: 4 }] },
+  // Kavya: coaching cap (2 cycles) exhausted and still stalled → the monitor queues the FIRST
+  // soft-ban strike for a human — the loop feeds back into decisions, it is not display-only
+  { id: "t03", name: "Kavya Nair", zone: "North Delhi", sku: "Manicure", cause: "skill", weekly: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], opw: 16, ladder: [{ kind: "skill_training", week: 2 }, { kind: "skill_training", week: 5 }] },
   // ── healthy (not flagged) ──
   { id: "h01", name: "Neha Joshi", zone: "South Delhi", sku: "Facial", cause: "healthy", weekly: Array(12).fill(0), opw: 18 },
   { id: "h02", name: "Priya Nair", zone: "South Delhi", sku: "Haircut", cause: "healthy", weekly: Array(12).fill(0), opw: 18 },
@@ -196,13 +224,14 @@ const rows: Row[] = [];
 const dateOf = (w: number) => new Date(BASE.getTime() + w * 7 * 86400000).toISOString().slice(0, 10);
 const skuShort = (s: string) => s.replace(/\s/g, "");
 
-// ── Recipe partners — same weekly counts as before, but each review's wording is drawn from the pool ──
+// ── Recipe partners — same weekly counts as before, but each review's wording is drawn from the pool.
+// Each row carries the latest ladder event on-or-before its week, so distinct (kind, date) pairs
+// reconstruct the full intervention history downstream. ──
 for (const r of R) {
-  const action = r.ivWeek !== undefined ? ACTION[r.cause] ?? "" : "";
-  const ivDate = r.ivWeek !== undefined ? dateOf(r.ivWeek) : "";
   const negPool = r.cause === "safety" ? "injury" : r.cause; // safety recipe → injury wording
   for (let w = 0; w < WEEKS; w++) {
     const date = dateOf(w);
+    const active = (r.ladder ?? []).filter((e) => e.week <= w).at(-1);
     const nNeg = r.weekly[w];
     for (let k = 0; k < r.opw; k++) {
       const negative = k < nNeg;
@@ -213,7 +242,7 @@ for (const r of R) {
         customer_id: `${r.id}-w${w}-o${k}-c`, karma: 0.8, aov_band: "medium", sku: r.sku, order_date: date,
         rating: isBurn ? 1 : negative ? (k % 2 === 0 ? 2 : 1) : 5,
         review_text: pick(POOL[kind]),
-        intervention: action, intervention_date: ivDate,
+        intervention: active?.kind ?? "", intervention_date: active ? dateOf(active.week) : "",
       });
     }
   }
@@ -285,6 +314,21 @@ addEdge("p15", "Farida Bano", "West Delhi", "Hair Spa", [
 addEdge("p16", "Zoya Sheikh", "North Delhi", "Waxing", [
   { kind: "hygiene", week: 10, count: 1 }, { kind: "hygiene", week: 11, count: 1 },
   pos(10, 5), pos(11, 5),
+]);
+// p17 — FM5: Hinglish + mixed-sentiment safety. A 4★ "thoda jal gaya" review must still pause;
+// "bas thik-thak tha" must NOT be over-escalated.
+addEdge("p17", "Pooja Iyer", "Central Delhi", "Hair Coloring", [
+  { kind: "hinglishSafety", week: 10, count: 1 }, { kind: "hinglishSafety", week: 11, count: 1 },
+  { kind: "hinglishNeutral", week: 11, count: 2 },
+  pos(9, 4), pos(10, 4), pos(11, 3),
+]);
+// p18 — quality-severe (severity 4–5, non-safety) → accelerated track: training + concurrent
+// protective per-SKU soft-ban, human-gated. Includes a mixed skill+pricing complaint (the skill
+// part counts; the pricing gripe is routed off-partner, not the whole review).
+addEdge("p18", "Lakshmi Pillai", "East Delhi", "Hair Coloring", [
+  { kind: "severe", week: 9, count: 1 }, { kind: "severe", week: 10, count: 1 }, { kind: "severe", week: 11, count: 1 },
+  { kind: "mixed", week: 11, count: 1 },
+  pos(9, 4), pos(10, 4), pos(11, 4),
 ]);
 
 // ── Multi-SKU orders (varied wording) — one order, one order-level review, per-SKU attribution ──

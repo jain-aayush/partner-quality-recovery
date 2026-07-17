@@ -16,7 +16,7 @@ export interface PartnerRollup {
   partnerId: string; name: string; zone: string; avgRating: number;
   activeSkus: number; failingSkus: number; unimprovable: boolean;
 }
-export interface Pipeline2Response { cases: SkuCase[]; partners: PartnerRollup[]; progress?: Progress[]; config?: Record<string, number>; source?: string; rowCount?: number }
+export interface Pipeline2Response { cases: SkuCase[]; partners: PartnerRollup[]; progress?: Progress[]; config?: Record<string, number>; source?: string; rowCount?: number; issues?: string[]; backfillCount?: number }
 
 type Choice = "approved" | "rejected" | "info";
 type Tone = "red" | "amber" | "green" | "purple" | "info" | "gray";
@@ -51,8 +51,9 @@ const ACTION: Record<string, string> = {
 /** Priority bucket the QM reads at a glance. */
 function bucket(c: SkuCase): { tone: Tone; label: string } {
   const d = c.decision;
-  if (d.track === "safety" && d.actions.includes("safety_pause")) return { tone: "red", label: "Safety — act now" };
-  if (d.actions.includes("offboard") || d.cause === "unimprovable") return { tone: "red", label: "Consider removing" };
+  if (d.immediateActions.includes("safety_pause")) return { tone: "red", label: "Safety — paused, your call" };
+  if (d.track === "safety" && d.gate === "held_for_corroboration") return { tone: "gray", label: "Waiting for 2nd report" };
+  if (d.actions.includes("offboard") || d.actions.includes("hard_ban") || d.cause === "unimprovable") return { tone: "red", label: "Consider removing" };
   if (d.incomeAffecting) return { tone: "amber", label: "Affects earnings" };
   if (d.actions.includes("review_protection")) return { tone: "info", label: "Protect the partner" };
   if (d.gate === "held_for_corroboration") return { tone: "gray", label: "Waiting for 2nd report" };
@@ -223,9 +224,18 @@ function DecisionCard({ c, ps, cfg, decided, draft, onDraft, onDecide }: {
         {/* read every counted review + what was set aside */}
         <ReviewList complaints={c.complaints} excluded={c.excluded} />
 
+        {/* already executed — the immediate, reversible precaution (safety only) */}
+        {decision.immediateActions.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-[var(--bad-tint)] px-3 py-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--bad)]">Already done</span>
+            {decision.immediateActions.map((a) => <Chip key={a} tone="red">{ACTION[a] ?? a}</Chip>)}
+            <span className="text-[11px] text-[var(--ink-2)]">Precautionary and reversible — she is not taking bookings while you decide.</span>
+          </div>
+        )}
+
         {/* recommendation */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-3)]">We suggest</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-3)]">{decision.immediateActions.length > 0 ? "Your decision" : "We suggest"}</span>
           {decision.actions.map((a) => <Chip key={a} tone="purple">{ACTION[a] ?? a}</Chip>)}
         </div>
 
@@ -418,6 +428,14 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
 
   return (
     <div className="space-y-5">
+      {/* upload validation notes — rows we could not (or must not) count */}
+      {(data.issues?.length ?? 0) > 0 && (
+        <div className="rounded-xl bg-[var(--warn-tint)] px-4 py-3 text-[12px] leading-relaxed text-[var(--ink-2)]">
+          <b className="text-[var(--warn)]">Some rows need attention:</b>
+          <ul className="mt-1 list-disc pl-5">{data.issues!.map((m, i) => <li key={i}>{m}</li>)}</ul>
+        </div>
+      )}
+
       {/* summary tiles — click to jump */}
       <div className="flex flex-wrap gap-3">
         <Tile n={decidable.length - doneN} label="Need your decision" tone="amber" active={tab === "queue"} onClick={() => setTab("queue")} />

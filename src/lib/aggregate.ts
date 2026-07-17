@@ -63,7 +63,17 @@ export function aggregate(
     let totalComplaints = 0;
 
     for (const cls of PROBLEM_CLASSES) {
-      const hits = partnerNeg.filter((g) => g.tag.problemClasses.includes(cls));
+      // Pricing is never a partner-quality issue — a mixed review keeps its partner classes
+      // (skill/time/…) counted here while the pricing gripe stays off the partner's record.
+      if (cls === "pricing") continue;
+      // A customer-self review contributes ONLY its protective unfair_review signal. Its other
+      // mentions ("…but it's still patchy") must not raise the partner's issue rates — the same
+      // evidence cannot both shield the partner and push her toward training (FM1).
+      const hits = partnerNeg.filter(
+        (g) =>
+          g.tag.problemClasses.includes(cls) &&
+          (g.tag.target !== "customer_self" || cls === "unfair_review"),
+      );
       if (hits.length === 0) continue;
       totalComplaints += hits.length;
       const weighted = hits.reduce(
@@ -86,6 +96,7 @@ export function aggregate(
     for (const iss of issues) problemMix[iss.problemClass] = Number((iss.rawComplaints / totalComplaints).toFixed(2));
 
     const safetyTags = group.filter((g) => g.tag.safetyFlag);
+    const safetyQuotes = [...new Set(safetyTags.flatMap((g) => g.tag.evidenceQuotes.slice(0, 1)))].slice(0, 3);
     rows.push({
       partnerId,
       sku,
@@ -97,6 +108,7 @@ export function aggregate(
       problemMix,
       safetyGraveCount: safetyTags.filter((g) => isGraveSafety(g.tag.safetySubtype)).length,
       safetyLesserCount: safetyTags.filter((g) => !isGraveSafety(g.tag.safetySubtype)).length,
+      safetyQuotes,
       highValueComplaints: partnerNeg.filter((g) => g.tag.customer.highValue).length,
       lowTrustComplaints: partnerNeg.filter((g) => g.tag.customer.karma < THRESHOLDS.karmaLowTrust).length,
       cohortPctile: 0, // filled in below
@@ -131,5 +143,9 @@ export function actionableIssues(row: SkuAggregate): IssueStat[] {
 
 /** True when the row warrants attention at all — an actionable issue or any safety signal. */
 export function needsAttention(row: SkuAggregate): boolean {
-  return actionableIssues(row).length > 0 || row.safetyGraveCount > 0 || row.safetyLesserCount >= 2;
+  return (
+    actionableIssues(row).length > 0 ||
+    row.safetyGraveCount > 0 ||
+    row.safetyLesserCount >= THRESHOLDS.unfairCorroborationMin
+  );
 }

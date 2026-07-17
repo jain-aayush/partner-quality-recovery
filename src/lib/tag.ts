@@ -21,11 +21,12 @@ import {
 import { isHighValue, THRESHOLDS } from "./thresholds";
 
 // Recall-first safety lexicons (grave subtypes take priority over hygiene).
+// Hinglish terms included — FM5: "thoda jal gaya" is a safety event, whatever the star rating.
 const SAFETY: Record<SafetySubtype, string[]> = {
-  injury: ["burned", "burn ", "burnt", "cut me", "bleeding", "wound", "swelling", "allergic reaction", "chemical burn", "scalded"],
-  harassment: ["harassed", "inappropriate", "touched me", "creepy", "abusive", "misbehaved", "uncomfortable advances"],
-  theft: ["stole", "stolen", "went missing", "took my", "robbed"],
-  hygiene: ["dirty tools", "unhygienic", "unclean", "reused", "not sanitized", "not sanitised", "filthy", "unsterilized"],
+  injury: ["burned", "burn ", "burnt", "cut me", "bleeding", "wound", "swelling", "allergic reaction", "chemical burn", "scalded", "jal gaya", "jal gayi", "jala diya", "current laga", "shock laga", "khoon nikla"],
+  harassment: ["harassed", "inappropriate", "touched me", "creepy", "abusive", "misbehaved", "uncomfortable advances", "badtameezi", "galat harkat"],
+  theft: ["stole", "stolen", "went missing", "took my", "robbed", "chori", "chura liya", "gayab ho gaya"],
+  hygiene: ["dirty tools", "unhygienic", "unclean", "reused", "not sanitized", "not sanitised", "filthy", "unsterilized", "gande tools", "saaf nahi"],
 };
 
 // Non-safety problem-class keywords → the closed taxonomy.
@@ -63,68 +64,37 @@ function customerContext(c: Customer): CustomerContext {
   };
 }
 
-function detectTarget(text: string, problemClasses: ProblemClass[]): Target {
+// Problem classes that are complaints about the PARTNER's work (vs pricing/app/customer-self).
+const PARTNER_CLASSES: ProblemClass[] = ["skill_issue", "time", "undisclosed_supplies", "partner_attitude"];
+
+/**
+ * Who is the complaint actually about? Partner-attributable content outranks an off-target
+ * gripe on the same review — "patchy AND overcharged" is a partner complaint that also
+ * mentions pricing, never a pricing review (the skill complaint must not be lost). A
+ * customer-self signal still wins: the unfair-review shield is aggregated protectively.
+ */
+function detectTarget(text: string, problemClasses: ProblemClass[], hasSafety: boolean): Target {
   const t = text.toLowerCase();
   if (has(t, UNFAIR)) return "customer_self";
+  if (hasSafety || problemClasses.some((c) => PARTNER_CLASSES.includes(c))) return "partner";
   if (problemClasses.includes("pricing")) return "pricing";
   if (/\b(app|website|otp|payment failed|booking system|customer care)\b/.test(t)) return "urban_company";
   return "partner";
 }
 
 /**
- * Tag a single review. Empty/rating-only → thin_text (analyst back-fill). Injection → quarantined,
- * neither followed nor cited. Positive → no problem classes. Safety is recall-first: any safety
- * keyword forces safetyFlag + severity >= 4.
+ * Tag a single review. SAFETY IS SCANNED FIRST, on the raw text, before any early exit —
+ * a safety keyword forces safetyFlag + severity >= 4 regardless of star rating, text length,
+ * sentiment, or an injection payload wrapped around it (FM5 / QC1: safety recall is the
+ * hardest gate). Then: injection → quarantined, neither followed nor cited; empty/rating-only
+ * → thin_text (analyst back-fill); positive → no problem classes.
  */
 export function tagReview(review: Review, customer: Customer): ReviewTag {
   const customerCtx = customerContext(customer);
   const flags: ReviewTag["flags"] = [];
   if (customer.karma < THRESHOLDS.karmaLowTrust) flags.push("low_trust_reviewer");
 
-  const base = {
-    reviewId: review.id,
-    partnerId: review.partnerId,
-    sku: review.sku,
-    customer: customerCtx,
-    safetyFlag: false,
-    safetySubtype: null as SafetySubtype | null,
-    problemClasses: [] as ProblemClass[],
-    evidenceQuotes: [] as string[],
-  };
-
-  // Injection quarantine — untrusted text is never read as an instruction, never cited.
-  if (detectInjection(review.text)) {
-    return {
-      ...base,
-      sentiment: "negative",
-      target: "irrelevant",
-      severity: 1,
-      confidence: 0.2,
-      flags: [...flags, "injection_quarantined"],
-    };
-  }
-
-  // Thin text — a bare rating with no usable words. Never invent a problem from a star.
-  const words = review.text.trim().split(/\s+/).filter(Boolean);
-  if (words.length < 3) {
-    return {
-      ...base,
-      sentiment: review.rating >= 4 ? "positive" : review.rating === 3 ? "neutral" : "negative",
-      target: "partner",
-      severity: 1,
-      confidence: 0.3,
-      flags: [...flags, "thin_text"],
-    };
-  }
-
-  const positive = review.rating >= 4;
-  if (positive) {
-    return { ...base, sentiment: "positive", target: "irrelevant", severity: 1, confidence: 0.8, flags };
-  }
-
-  const sentiment: Sentiment = review.rating === 3 ? "neutral" : "negative";
-
-  // Safety first (recall-first). Grave subtypes win over hygiene.
+  // Safety first (recall-first) — before the quarantine/thin/positive exits. Grave wins over hygiene.
   let safetySubtype: SafetySubtype | null = null;
   let safetyQuote: string | null = null;
   for (const sub of ["injury", "harassment", "theft", "hygiene"] as SafetySubtype[]) {
@@ -135,6 +105,54 @@ export function tagReview(review: Review, customer: Customer): ReviewTag {
       break;
     }
   }
+
+  const base = {
+    reviewId: review.id,
+    partnerId: review.partnerId,
+    sku: review.sku,
+    customer: customerCtx,
+    safetyFlag: safetySubtype !== null,
+    safetySubtype,
+    problemClasses: [] as ProblemClass[],
+    evidenceQuotes: [] as string[],
+  };
+
+  // Injection quarantine — untrusted text is never read as an instruction, never cited.
+  // A deterministic safety signal inside the payload still escalates (flag without quoting),
+  // so quarantine can't become a safety-recall hole.
+  if (detectInjection(review.text)) {
+    return {
+      ...base,
+      sentiment: "negative",
+      target: safetySubtype ? "partner" : "irrelevant",
+      severity: safetySubtype ? 4 : 1,
+      confidence: 0.2,
+      flags: safetySubtype ? [...flags, "injection_quarantined", "needs_human"] : [...flags, "injection_quarantined"],
+    };
+  }
+
+  // Thin text — a bare rating with no usable words. Never invent a problem from a star —
+  // but a safety keyword in a terse review ("Burned me.") still flags, with the verbatim quote.
+  const words = review.text.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 3 && !safetySubtype) {
+    return {
+      ...base,
+      sentiment: review.rating >= 4 ? "positive" : review.rating === 3 ? "neutral" : "negative",
+      target: "partner",
+      severity: 1,
+      confidence: 0.3,
+      flags: [...flags, "thin_text"],
+    };
+  }
+
+  // Positive exit only when no safety signal — "nice haircut but she burned my neck" (4★)
+  // is a mixed-sentiment safety event, not a positive review.
+  const positive = review.rating >= 4;
+  if (positive && !safetySubtype) {
+    return { ...base, sentiment: "positive", target: "irrelevant", severity: 1, confidence: 0.8, flags };
+  }
+
+  const sentiment: Sentiment = positive ? "positive" : review.rating === 3 ? "neutral" : "negative";
 
   // Problem classes.
   const problemClasses: ProblemClass[] = [];
@@ -155,7 +173,7 @@ export function tagReview(review: Review, customer: Customer): ReviewTag {
   // Relevance first: who is the complaint actually about? An off-target review — the app/platform
   // (urban_company), pricing, or the customer's own doing (customer_self) — is never a partner
   // penalty; `target` carries that signal and aggregation drops it from the partner quality rate.
-  const target = detectTarget(review.text, problemClasses);
+  const target = detectTarget(review.text, problemClasses, safetySubtype !== null);
 
   // Escape hatch ONLY for a genuinely partner-directed complaint we couldn't classify. An off-target
   // review is already explained by `target`, so we don't mislabel it out_of_taxonomy / needs_human

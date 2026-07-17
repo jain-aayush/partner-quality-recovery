@@ -14,7 +14,8 @@ import { THRESHOLDS } from "./thresholds";
 function evidenceFor(cause: ProblemClass, tags: ReviewTag[]): string[] {
   const quotes: string[] = [];
   for (const t of tags) {
-    if (t.target === "partner" && t.problemClasses.includes(cause)) quotes.push(...t.evidenceQuotes);
+    const relevantTarget = t.target === "partner" || (cause === "unfair_review" && t.target === "customer_self");
+    if (relevantTarget && t.problemClasses.includes(cause)) quotes.push(...t.evidenceQuotes);
   }
   return [...new Set(quotes)].slice(0, 3);
 }
@@ -22,14 +23,15 @@ function evidenceFor(cause: ProblemClass, tags: ReviewTag[]): string[] {
 export function diagnoseSku(row: SkuAggregate, tags: ReviewTag[]): Diagnosis {
   const base = { partnerId: row.partnerId, sku: row.sku };
 
-  // Thin data — refuse to guess.
+  // Thin data — refuse to guess. A refusal has nothing to be confident about: confidence 0
+  // keeps it non-decisive so no downstream gate can read it as a strong "all clear".
   if (row.lowN) {
     return {
       ...base,
       primaryCause: "out_of_taxonomy",
       significantCauses: [],
       evidenceQuotes: [],
-      confidence: 1,
+      confidence: 0,
       alternativesConsidered: [],
       reasoning: `Only ${row.reviewCount} review(s), below the minimum of ${THRESHOLDS.minReviews}. No diagnosis.`,
       flags: ["insufficient_evidence", "needs_human"],

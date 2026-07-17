@@ -6,7 +6,6 @@ const CAUSE_ENUM = [
   "rushing",
   "undisclosed_supplies",
   "unfair_reviews",
-  "unimprovable",
   "insufficient_evidence",
 ];
 

@@ -130,6 +130,7 @@ export interface SkuAggregate {
   problemMix: Partial<Record<ProblemClass, number>>; // share among complaints — NOT the trigger
   safetyGraveCount: number;
   safetyLesserCount: number;
+  safetyQuotes: string[]; // verbatim quotes from the safety-flagged reviews ("evidence or silence")
   highValueComplaints: number; // negative complaints from high-value (trusted, high-AoV) customers
   lowTrustComplaints: number; // negative complaints from low-trust reviewers (down-weighted)
   cohortPctile: number; // vs same sku × zone peers (0..1)
@@ -183,12 +184,36 @@ export interface Decision {
   cause: RootCause | "none";
   track: SeverityTrack;
   actions: ActionKind[]; // may be several — parallel interventions for a multi-cause partner
+  /**
+   * Executed immediately, before any human review — only ever the reversible precautionary
+   * safety_pause (grave or corroborated-lesser safety). The gated decision (offboard vs
+   * exonerate) stays in `actions` behind the human gate.
+   */
+  immediateActions: ActionKind[];
   incomeAffecting: boolean;
   grain: BanGrain | null; // per-SKU for numeric severity; platform only for a safety_flag
   gate: GateRoute;
   gateReason: string;
   evidenceQuotes: string[];
 }
+
+/**
+ * Per partner × SKU escalation-ladder state (PRD §1b), derived deterministically from the
+ * intervention history in the data — never a model output. v0 holds state in-run only.
+ */
+export interface LadderState {
+  coachingCycles: number; // completed coaching interventions (training / warning / supply kit)
+  softBanStrikes: number; // soft-bans within the rolling SOFTBAN_WINDOW_DAYS
+  daysSinceLastSoftBan: number | null; // null = never soft-banned
+  stillFailing: boolean; // monitor scored the latest intervention as stalled (volume floor met)
+}
+
+export const NO_LADDER_HISTORY: LadderState = {
+  coachingCycles: 0,
+  softBanStrikes: 0,
+  daysSinceLastSoftBan: null,
+  stillFailing: false,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Decision-support detail — everything a human needs on one screen to make a
