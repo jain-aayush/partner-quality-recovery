@@ -16,7 +16,7 @@ export function minReviewsGuard(
   return {
     partnerId,
     rootCause: "insufficient_evidence",
-    confidence: 1,
+    confidence: 0,
     evidenceQuotes: [],
     secondaryHypothesis: null,
     reasoning: `Only ${reviews.length} review(s), below the minimum of ${minReviews} required for a responsible diagnosis. No model call was made.`,
@@ -29,10 +29,10 @@ const INJECTION_PATTERNS = [
   /ignore\s+(all\s+|any\s+|the\s+)?(previous|prior|above)\s+(instructions|prompts|rules)/i,
   /disregard\s+(the\s+)?(system|previous|prior|above)/i,
   /system\s+prompt/i,
-  /rate\s+(this|the)\s+partner/i,
+  /(?:^|[.!?]\s*)(?:please\s+)?rate\s+(this|the)\s+partner\b/i,
   /root_cause/i,
   /respond\s+with/i,
-  /you\s+are\s+(now\s+)?(a|an)\s/i,
+  /you\s+are\s+now\s+(a|an)\s/i,
 ];
 
 /** Review text is untrusted data: anything that reads like an instruction to the model is quarantined. */

@@ -106,7 +106,8 @@ Problem taxonomy (closed set + explicit escape hatch): `time` · `partner_attitu
 **Bad-input handling (System 1):**
 - **Empty / rating-only review** → `problem_classes: []`, `flags:["thin_text"]`; routed to the *analyst back-fill* queue (per PDF: "Analyst to back-fill data of Rating and No Review"). Never invent a problem from a bare star rating.
 - **Missing `sku`** → attempt inference from text; if ambiguous, tag at category grain + `flags:["needs_human"]` (never guess a per-SKU skill gap).
-- **Out-of-taxonomy complaint** (e.g., app crashed, parking dispute) → `target` set appropriately (often `urban_company`), `problem_classes:["out_of_taxonomy"]`, human review — **never** force-fit into a partner skill bucket.
+- **Off-target complaint** (app crashed, payment/OTP failed, a pure pricing gripe, or the customer's own doing) → `target` set to `urban_company` / `pricing` / `customer_self` with `problem_classes:[]` and **no `out_of_taxonomy` / `needs_human` flag** — it is *not* an unknown, it is a recognised **non-partner** issue. System 2 drops it from the partner quality signal (target-exclusion); on the partner console it shows only as a *"not counted"* footnote, never in the action queue. (`unfair_review` is the one target≠partner class still aggregated — as a *protective* signal.)
+- **Out-of-taxonomy complaint** (a genuinely *partner-directed* gripe that fits no class) → `problem_classes:["out_of_taxonomy"]`, `flags:["out_of_taxonomy","needs_human"]`, routed to a human analyst — **never** force-fit into a partner skill bucket. Distinguished from *off-target* above by `target == partner`.
 - **Prompt injection in text** (see FM3) → `flags:["injection_quarantined"]`; the text is neither followed nor cited.
 - **Non-verbatim evidence** (model paraphrases instead of quoting) → auto-downgrade `confidence`, `flags:["non_verbatim"]`, route to human.
 
@@ -315,6 +316,7 @@ The gate is not "a human looks" — it's a specified workflow.
 | **Appeal** | Partner replies agree/disagree. A **different** QM than the original approver re-reviews within **48h**; bookings continue during the appeal (except an active safety pause). |
 | **Anti-rubber-stamping** | Human must record a free-text rationale (min length enforced); a sampled % of approvals are QA'd by a QM lead. |
 | **Audit record (full internal trace)** | Per income-affecting decision, immutably logs: model output + cited quotes, config version, human actor + rationale, timestamps, and any override. Internal-only; partner sees the cited quotes at decision time. Retained `AUDIT_RETENTION`. This is the evidence trail for a contested/labor dispute. |
+| **Decision surface (what the QM sees per case)** | The full FM4 breakdown, surfaced for the call — not just the recommendation: the plain-language cause; **week-over-week complaints ÷ bookings** across the decision window; **every counted review verbatim** with its per-review trust weighting (high-value up-weighted, low-trust down-weighted); a **"not counted" tally** (off-target pricing/app · thin/neutral · **prompt-injection quarantined**); and the diagnosis **confidence, reasoning + alternatives-ruled-out, severity spread, cohort percentile, and prior-coaching history**. `out_of_taxonomy` cases render as *"Uncategorised — read the reviews"* with the verbatim complaint as the summary, so a jargon label never stands alone. |
 
 ---
 
@@ -435,6 +437,23 @@ Each test category maps to the failure mode(s) it defends. Mock mode is determin
 | **E22** | Prevalence gate | 3 skill complaints over 100 SKU bookings (3%) → **`do_nothing`**; same 3 over 20 bookings (15%) → actionable. A single burn over 100 bookings → **still acts** (safety bypasses prevalence) | `ISSUE_PREVALENCE_THRESHOLD` |
 
 **Adversarial coverage** is explicit (E6 injection; E5 weaponization; E8 under-tagging safety events; E13 unfair-claim gaming). **E10/E15 are the invariant**: any change that lets an *irreversible or livelihood-ending* action auto-execute is wrong by definition. **E17** guards the "high-severity → training" confusion; **E18** keeps the new agentic step on the same evidence leash as the tagger.
+
+**Additional coverage in the live harness** — the table above is the conceptual map; the executable suite (`evals/run2.ts`, run via `npm run eval:v2`) is the source of truth for exact IDs, and now asserts these too (IDs are the harness's own):
+
+| # | What it asserts | Defends |
+|---|---|---|
+| **E23** | Multi-SKU order naming one service → the complaint lands only on that SKU; co-services stay clean | FM4 |
+| **E24** | Multi-SKU order naming *no* service → complaint attributed to **all** services (keep the signal) | FM4 |
+| **E25** | Thin / rating-only review → `thin_text`, **no invented problem class** | contract |
+| **E26** | Vague, *partner-directed*, no keyword → `out_of_taxonomy` + `needs_human`, no fabricated evidence | contract |
+| **E27** | Rating-3 review → `neutral`, contributes **no** partner complaint | contract |
+| **E28** | Low-trust reviewer complaint → flagged + **down-weighted** (weighted < raw, < a normal reviewer's) | FM2 |
+| **E29** | Grave safety **beyond burns** (harassment, theft) → `safety_pause` + offboard, human-gated | §1b Safety track |
+| **E30** | One review naming **multiple** problems → all classes tagged, verbatim evidence each | QC1 |
+| **E31** | **Pricing** complaint → `target=pricing`, relevance-excluded from the partner signal (no penalty) | §1 off-target |
+| **E32** | **App/platform** complaint → `target=urban_company`, **not** `out_of_taxonomy`/`needs_human`, no penalty | §1 off-target |
+
+> **Numbering note:** the harness IDs (`E1, E4, E7=injection, E13, E14, E17, E19–E32, E10/E15, E-runs`) predate and diverge from this table's conceptual numbering (e.g. injection is E6 here, E7 in code). The harness is authoritative; this table maps intent to failure modes. Reconcile the two in a future pass if the drift becomes confusing.
 
 ---
 
