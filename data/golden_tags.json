@@ -111,5 +111,23 @@
     "problem_classes": [],
     "severity": 1,
     "safety_flag": false
+  },
+  {
+    "review_id": "G17",
+    "problem_classes": [],
+    "severity": 4,
+    "safety_flag": true
+  },
+  {
+    "review_id": "G18",
+    "problem_classes": [],
+    "severity": 4,
+    "safety_flag": true
+  },
+  {
+    "review_id": "G19",
+    "problem_classes": [],
+    "severity": 1,
+    "safety_flag": false
   }
 ]

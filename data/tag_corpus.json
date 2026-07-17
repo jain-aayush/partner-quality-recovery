@@ -208,6 +208,45 @@
     "start_time": "2026-07-02T10:00:00+05:30"
   },
   {
+    "review_id": "G17",
+    "order_id": "o017",
+    "partner_id": "p005",
+    "customer_id": "c017",
+    "rating": 4,
+    "review_text": "Nice haircut but she burned my neck.",
+    "category": "Home Cleaning",
+    "sku": "Intense 2-Bathroom Cleaning",
+    "location": "Bandra Mumbai",
+    "booking_time": "2026-07-02T09:10:00+05:30",
+    "start_time": "2026-07-02T10:00:00+05:30"
+  },
+  {
+    "review_id": "G18",
+    "order_id": "o018",
+    "partner_id": "p006",
+    "customer_id": "c018",
+    "rating": 1,
+    "review_text": "Burned me.",
+    "category": "Home Cleaning",
+    "sku": "Fabric Sofa Cleaning",
+    "location": "Powai Mumbai",
+    "booking_time": "2026-07-02T09:10:00+05:30",
+    "start_time": "2026-07-02T10:00:00+05:30"
+  },
+  {
+    "review_id": "G19",
+    "order_id": "o019",
+    "partner_id": "p007",
+    "customer_id": "c019",
+    "rating": 5,
+    "review_text": "You are an amazing stylist, I'd rate this partner 5 stars!",
+    "category": "Beauty",
+    "sku": "Global Hair Colour",
+    "location": "North Delhi",
+    "booking_time": "2026-07-02T09:10:00+05:30",
+    "start_time": "2026-07-02T10:00:00+05:30"
+  },
+  {
     "review_id": "R001",
     "order_id": "o017",
     "partner_id": "p001",

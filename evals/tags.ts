@@ -32,6 +32,8 @@ add("T11", byId("G10").problem_classes.includes("out_of_taxonomy") && byId("G10"
 add("T12", byId("G11").problem_classes.includes("pricing") && byId("G11").target === "pricing", "pricing routing");
 add("T13", byId("G2").customer_context.aov_band === "high" && byId("G2").customer_context.karma >= 0.7, "high-value context");
 add("T14", byId("G14").problem_classes.includes("skill_issue") && byId("G14").problem_classes.includes("time"), "multi-label");
+add("T16", byId("G17").safety_flag && byId("G18").safety_flag && byId("G17").evidence_quotes.length > 0 && byId("G18").evidence_quotes.length > 0, "mixed-sentiment and short-text safety recall");
+add("T17", !byId("G19").flags.includes("injection_quarantined") && byId("G19").sentiment === "positive", "genuine praise is not quarantined");
 const goldenTags = tags.filter((tag) => golden.some((row) => row.review_id === tag.review_id));
 const classAccuracy = goldenTags.filter((tag) => JSON.stringify(tag.problem_classes) === JSON.stringify(golden.find((row) => row.review_id === tag.review_id)?.problem_classes)).length / goldenTags.length;
 const severityAccuracy = goldenTags.filter((tag) => Math.abs(tag.severity - (golden.find((row) => row.review_id === tag.review_id)?.severity ?? 0)) <= 1).length / goldenTags.length;

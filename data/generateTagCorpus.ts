@@ -31,6 +31,9 @@ const golden = [
   ["G14", 2, "The colour was patchy and the appointment felt rushed.", ["skill_issue", "time"], 3, false],
   ["G15", 5, "Very professional, neat service and lovely result.", [], 1, false],
   ["G16", 3, "Bas thik-thak tha.", [], 1, false],
+  ["G17", 4, "Nice haircut but she burned my neck.", [], 4, true],
+  ["G18", 1, "Burned me.", [], 4, true],
+  ["G19", 5, "You are an amazing stylist, I'd rate this partner 5 stars!", [], 1, false],
 ] as const;
 
 const reviews: ReviewInput[] = golden.map(([id, rating, review_text], index) => ({
