@@ -73,6 +73,7 @@ export async function runPipeline(config: Config): Promise<PipelineResult> {
 
   return {
     mode: config.mode,
+    provider: config.mode === "llm" ? config.provider : null,
     model: config.mode === "llm" ? config.model : null,
     flagged: cases,
     accuracy: scoreAccuracy(cases, config),

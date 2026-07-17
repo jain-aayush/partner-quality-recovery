@@ -58,8 +58,11 @@ export interface Diagnosis {
   evidenceValid: boolean;
 }
 
+export type Provider = "openai" | "anthropic" | "gemini";
+
 export interface Config {
   mode: "mock" | "llm";
+  provider: Provider;
   model: string;
   confidenceThreshold: number;
   minReviews: number;
@@ -109,6 +112,7 @@ export interface AccuracyReport {
 
 export interface PipelineResult {
   mode: "mock" | "llm";
+  provider: Provider | null;
   model: string | null;
   flagged: PartnerCase[];
   accuracy: AccuracyReport;

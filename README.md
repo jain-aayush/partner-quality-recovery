@@ -18,16 +18,21 @@ npm run dev        # open http://localhost:3000 → click "Run pipeline"
 
 ## Real LLM mode (optional)
 
-Copy `.env.example` to `.env.local` and set:
+Copy `.env.example` to `.env.local`, set `DIAGNOSIS_MODE=llm`, pick a provider, and set its key:
 
 | Var | Default | Meaning |
 |---|---|---|
 | `DIAGNOSIS_MODE` | `mock` | `mock` \| `llm` |
-| `OPENAI_API_KEY` | — | required only for `llm` mode |
-| `OPENAI_MODEL` | `gpt-4o-mini` | any strict-JSON-schema-capable model |
+| `LLM_PROVIDER` | `openai` | `openai` \| `anthropic` \| `gemini` |
+| `OPENAI_API_KEY` | — | required when `LLM_PROVIDER=openai` |
+| `ANTHROPIC_API_KEY` | — | required when `LLM_PROVIDER=anthropic` |
+| `GEMINI_API_KEY` | — | required when `LLM_PROVIDER=gemini` |
+| `LLM_MODEL` | per-provider* | override the model |
 | `CONFIDENCE_THRESHOLD` | `0.7` | below this, cases route to a human |
 | `MIN_REVIEWS` | `5` | below this, diagnosis refuses to guess |
 | `RATING_FLAG_THRESHOLD` | `3.5` | screening rule for the bottom cohort |
+
+\* Default model per provider: `openai` → `gpt-4o-mini`, `anthropic` → `claude-haiku-4-5-20251001`, `gemini` → `gemini-2.0-flash`. All three return the **same strict structured-output schema** behind one `Diagnoser` interface (`src/lib/providers/`), so the guardrails, policy table, and human gate are identical whichever provider runs. `OPENAI_MODEL` is still honored for back-compat.
 
 ## Deploy (Vercel)
 

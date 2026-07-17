@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "generate": "tsx data/generate.ts",
-    "eval": "tsx evals/run.ts"
+    "generate:unified": "tsx data/generate-unified.ts",
+    "generate:timeline": "tsx data/generate-timeline.ts",
+    "eval": "tsx evals/run.ts",
+    "eval:v2": "tsx evals/run2.ts"
   },
   "dependencies": {
     "next": "16.2.10",

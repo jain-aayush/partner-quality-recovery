@@ -1,4 +1,4 @@
-import { AccuracyReport } from "../lib/types";
+import { AccuracyReport, Provider } from "../lib/types";
 import { CAUSES } from "./causes";
 
 function Tile({ value, label, sub }: { value: string; label: string; sub?: string }) {
@@ -16,12 +16,14 @@ function Tile({ value, label, sub }: { value: string; label: string; sub?: strin
 export default function AccuracyBanner({
   accuracy,
   mode,
+  provider,
   model,
   autoCount,
   humanPending,
 }: {
   accuracy: AccuracyReport;
   mode: string;
+  provider: Provider | null;
   model: string | null;
   autoCount: number;
   humanPending: number;
@@ -73,7 +75,9 @@ export default function AccuracyBanner({
               : "✗ Thin-data guard violated"}
           </span>
           <span className="rounded-full bg-[var(--ink)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-            {mode === "mock" ? "offline demo · deterministic" : `live · ${model}`}
+            {mode === "mock"
+              ? "offline demo · deterministic"
+              : `live · ${provider ?? ""}${provider ? " · " : ""}${model}`}
           </span>
         </div>
       </div>
