@@ -3,6 +3,7 @@
 import { useState } from "react";
 import partnersJson from "../../data/partners.json";
 import Pipeline2View, { Pipeline2Response } from "../components/Pipeline2View";
+import { setActiveCsv } from "../lib/client-store";
 import { Partner } from "../lib/types";
 
 const partners = partnersJson as unknown as Partner[];
@@ -73,7 +74,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function post(body?: string) {
+  async function post(body?: string): Promise<boolean> {
     setLoading(true);
     setError(null);
     try {
@@ -81,16 +82,20 @@ export default function Home() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? `Something went wrong (${res.status})`);
       setData(j);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       setLoading(false);
     }
   }
-  const run = () => post();
+  // The active dataset is shared browser-locally so the partner app (/partner) renders the SAME
+  // data the QM is looking at — an accepted upload becomes the active CSV; sample clears it.
+  const run = () => { setActiveCsv(null); void post(); };
   async function upload(file: File) {
     const csv = await file.text();
-    await post(JSON.stringify({ csv }));
+    if (await post(JSON.stringify({ csv }))) setActiveCsv({ name: file.name, csv });
   }
 
   return (
