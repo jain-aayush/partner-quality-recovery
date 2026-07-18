@@ -9,6 +9,7 @@
     "lint": "eslint",
     "generate": "tsx data/generate.ts",
     "generate:unified": "tsx data/generate-unified.ts",
+    "generate:demo": "tsx data/generate-demo.ts",
     "generate:timeline": "tsx data/generate-timeline.ts",
     "eval": "tsx evals/run.ts",
     "eval:v2": "tsx evals/run2.ts"

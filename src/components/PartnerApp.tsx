@@ -63,25 +63,19 @@ export default function PartnerApp() {
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [modal, setModal] = useState<{ c: SkuCase; view: View } | null>(null);
 
+  // Read the CURRENT active dataset (the QM's uploaded CSV, if any) — GET, not POST, so we never
+  // reset it — and the QM's decisions. Poll both so an upload or a QM action reflects live.
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/pipeline2", { method: "POST" });
-        const j = (await res.json()) as Pipeline2Response;
-        if (!res.ok) throw new Error("Couldn't load your updates.");
-        setData(j);
-      } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
-      finally { setLoading(false); }
-    })();
-  }, []);
-
-  // Poll QM decisions so the partner view updates live when a QM acts on the dashboard.
-  useEffect(() => {
-    const load = () => fetch("/api/decisions").then((r) => r.json())
+    const loadData = () => fetch("/api/pipeline2")
+      .then((r) => { if (!r.ok) throw new Error("Couldn't load your updates."); return r.json(); })
+      .then((j: Pipeline2Response) => setData(j))
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false));
+    const loadQm = () => fetch("/api/decisions").then((r) => r.json())
       .then((j: { decisions: QmDecision[] }) => setQm(Object.fromEntries((j.decisions ?? []).map((d) => [`${d.partnerId}|${d.sku}`, d]))))
       .catch(() => {});
-    load();
-    const t = setInterval(load, 5000);
+    loadData(); loadQm();
+    const t = setInterval(() => { loadData(); loadQm(); }, 5000);
     return () => clearInterval(t);
   }, []);
 
