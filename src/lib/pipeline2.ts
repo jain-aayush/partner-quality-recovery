@@ -5,11 +5,15 @@
  */
 
 import ucSample from "../../data/uc-sample.json";
-import { runFromRows, OrderRow, UnifiedResult } from "./unified";
+import { runFromRows, OrderRow, TagFn, UnifiedResult } from "./unified";
 
 export type { SkuCase, PartnerRollup } from "./unified";
 export type Pipeline2Result = UnifiedResult;
 
-export function runPipeline2(): UnifiedResult {
-  return runFromRows(ucSample as unknown as OrderRow[]);
+export function sampleRows(): OrderRow[] {
+  return ucSample as unknown as OrderRow[];
+}
+
+export function runPipeline2(tagFn?: TagFn): UnifiedResult {
+  return runFromRows(sampleRows(), tagFn);
 }

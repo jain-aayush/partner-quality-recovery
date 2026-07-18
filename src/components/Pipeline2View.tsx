@@ -19,7 +19,15 @@ export interface PartnerRollup {
   partnerId: string; name: string; zone: string; avgRating: number;
   activeSkus: number; failingSkus: number; unimprovable: boolean;
 }
-export interface Pipeline2Response { cases: SkuCase[]; partners: PartnerRollup[]; progress?: Progress[]; config?: Record<string, number>; source?: string; rowCount?: number; issues?: string[]; backfillCount?: number }
+/** Which engine tagged this run's reviews — the demo badge (see tagRuntime.ts). */
+export interface Inference {
+  engine: "llm-anthropic" | "llm-openai" | "rule";
+  model: string | null;
+  counts: { stored: number; llmAnthropic: number; llmOpenai: number; rule: number };
+  liveTagged: number;
+  llmErrors?: string[];
+}
+export interface Pipeline2Response { cases: SkuCase[]; partners: PartnerRollup[]; progress?: Progress[]; config?: Record<string, number>; source?: string; rowCount?: number; issues?: string[]; backfillCount?: number; inference?: Inference }
 
 type Tone = "red" | "amber" | "green" | "purple" | "info" | "gray";
 

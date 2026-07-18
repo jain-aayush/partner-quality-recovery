@@ -55,23 +55,27 @@ export async function diagnosePartner(
       };
 
       let raw: unknown;
+      let backend: "mock" | "llm" | "rule-fallback" = config.mode;
       try {
         raw =
           config.mode === "llm"
             ? await llmDiagnose(pub, clean, config, record)
             : await mockDiagnose(pub, clean, config);
       } catch (err) {
+        // The anthropic → openai chain is exhausted: last resort is the deterministic
+        // rule-based diagnoser, so the console keeps working with no key at all.
+        backend = "rule-fallback";
+        const fallback = await mockDiagnose(pub, clean, config);
         raw = {
-          rootCause: "insufficient_evidence",
-          confidence: 0,
-          reasoning: `Diagnosis backend failed: ${err instanceof Error ? err.message : String(err)}. Routed to human review.`,
+          ...fallback,
+          reasoning: `LLM providers unavailable (${err instanceof Error ? err.message : String(err)}); rule-based fallback. ${fallback.reasoning}`,
         };
       }
 
       const diagnosis = clampDiagnosis(raw, partner.id);
       diagnosis.flaggedReviews = flagged.map((r) => r.id);
       const final = validateEvidence(diagnosis, clean);
-      trace.finish(final, { modelCalled: config.mode === "llm" });
+      trace.finish(final, { modelCalled: config.mode === "llm" && backend !== "rule-fallback", backend });
       return final;
     }
   );
