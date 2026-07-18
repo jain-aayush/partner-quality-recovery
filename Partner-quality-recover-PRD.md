@@ -469,6 +469,17 @@ Each test category maps to the failure mode(s) it defends. Mock mode is determin
 
 **What is deliberately NOT automated:** screening threshold (a SQL rule, not a model call), the diagnosis→action mapping (a readable constant), and every offboard / hard-ban / overall / safety action. The scaling constraint is therefore **human-review capacity, not tokens** — which is exactly why the gate auto-clears supportive cases so scarce human attention concentrates on livelihood-affecting ones.
 
+### 5b. Remediation & compensation — when we got it wrong
+
+The gate reduces wrong income-affecting actions; it cannot make them zero. Accountability (§5.5) is empty unless a wrongful action has a defined, fast remedy. **When an appeal is upheld — or an audit finds an incorrect income-affecting action — remediation is automatic policy, not a negotiation:**
+
+- **Immediate reversal.** The restriction lifts the moment the appeal is upheld (implemented: upholding writes a superseding no-action decision the partner app reflects instantly).
+- **Record correction.** The overturned diagnosis is marked as such and **excluded from all future escalation-ladder history** — a wrong strike must never compound into a later soft-ban or offboard.
+- **Booking-priority restoration.** The partner's ranking/visibility is boosted for **14 days** (`REMEDY_BOOST_DAYS`, calibrate) to recover the demand lost during the restriction.
+- **Compensation on a predefined basis.** Lost earnings = **median weekly earnings for that partner × SKU (from booking history) × days restricted**, paid within **7 days** (`REMEDY_PAYOUT_SLA`). A formula, not a discretionary goodwill gesture — discretion is what turns remediation into a dispute.
+- **Incident review.** Every upheld appeal on an income-affecting action triggers a review of the diagnosis, thresholds, and the approving QM's rationale; recurring patterns feed threshold/eval changes (the same loop as reviewer-override analysis).
+- **Ownership & metrics.** The QM lead owns remediation SLAs. The Oversight view tracks **reversal rate** (upheld ÷ resolved appeals) and **time-to-remedy** (appeal filed → reversed); rising trends are a governance pager, not a dashboard curiosity.
+
 ---
 
 ## 6. Cost & scale

@@ -27,14 +27,16 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
 /**
  * Screen → parallel diagnose → policy → gate → simulate → re-diagnose loop.
  * Stateless: one call returns everything the dashboard needs.
+ * `reviewsOverride` lets eval harnesses run the identical pipeline on an alternate corpus
+ * (e.g. the keyword-free paraphrased robustness set) — the default stays the bundled data.
  */
-export async function runPipeline(config: Config): Promise<PipelineResult> {
+export async function runPipeline(config: Config, reviewsOverride?: Review[]): Promise<PipelineResult> {
   // One weekly run = one Langfuse session, so every partner's diagnosis groups together.
   const runConfig: Config =
     config.sessionId ? config : { ...config, sessionId: `pipeline-${new Date().toISOString()}` };
 
   const reviewsByPartner = new Map<string, Review[]>();
-  for (const r of reviews) {
+  for (const r of reviewsOverride ?? reviews) {
     const list = reviewsByPartner.get(r.partnerId) ?? [];
     list.push(r);
     reviewsByPartner.set(r.partnerId, list);

@@ -223,6 +223,28 @@ export async function withTagTrace<T>(
   return fn(t);
 }
 
+/**
+ * Durable audit record for a HUMAN decision (QM decision, appeal filed/resolved). Unlike the
+ * diagnosis/tag traces this is NOT gated on llm mode — a human approving an income-affecting
+ * action must be auditable regardless of which diagnosis engine ran. Still a strict no-op
+ * without the LANGFUSE_* keys (mock/eval stay offline and free). Returns whether it was recorded,
+ * so the caller can tell the client if the durable trail is active.
+ */
+export async function logAuditEvent(
+  name: "qm-decision" | "appeal-filed" | "appeal-resolved",
+  payload: Record<string, unknown>
+): Promise<boolean> {
+  const client = await getClient();
+  if (!client) return false;
+  try {
+    client.trace({ name, input: payload, metadata: { audit: true, ...payload } });
+    await client.flushAsync();
+    return true;
+  } catch {
+    return false; // telemetry must never break the product
+  }
+}
+
 /** Flush queued events at a batch boundary (pipeline run, API request, script). No-op when off. */
 export async function flushObservability(): Promise<void> {
   if (!keysPresent()) return;

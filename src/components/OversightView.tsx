@@ -7,8 +7,10 @@
  * the system. Live numbers are never mixed into the simulated series.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Appeal, AutoFlag, QmDecision } from "../lib/client-store";
+import { resolveAppeal } from "../lib/client-store";
+import { OUTCOME, OutcomeKind } from "../lib/outcomes";
 import { OVERSIGHT_HISTORY } from "../lib/oversight";
 
 function Stat({ n, label, sub }: { n: string; label: string; sub: string }) {
@@ -74,9 +76,66 @@ function TrendChart({ title, note, points }: { title: string; note: string; poin
   );
 }
 
+// One appeal: open → resolve here (a different QM re-reviews — uphold reverses & remediates); resolved → the record.
+function AppealCard({ a }: { a: Appeal }) {
+  const [note, setNote] = useState("");
+  const canSubmit = note.trim().length >= 8;
+  const incomeAffecting = OUTCOME[a.action as OutcomeKind]?.incomeAffecting ?? false;
+  return (
+    <div className="rounded-lg bg-[var(--page)] px-3 py-2 text-[12px]">
+      <div className="flex flex-wrap items-center gap-2">
+        <b>{a.partnerName}</b>
+        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[var(--ink-2)] ring-1 ring-[var(--line)]">{a.sku}</span>
+        <span className="text-[var(--ink-3)]">contesting: {a.decisionLabel}</span>
+        <span className="ml-auto text-[10px] text-[var(--ink-3)]">{new Date(a.createdAt).toLocaleString()}</span>
+        {a.status === "open" && <span className="rounded-full bg-[var(--info-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--info)]">Open</span>}
+        {a.status === "upheld" && <span className="rounded-full bg-[var(--good-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--good)]">Upheld — reversed</span>}
+        {a.status === "denied" && <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[var(--ink-2)] ring-1 ring-[var(--line)]">Denied — action stands</span>}
+      </div>
+      <p className="mt-1 italic text-[var(--ink-2)]">&ldquo;{a.reason}&rdquo;</p>
+      {a.status === "open" ? (
+        <div className="mt-2 border-t border-[var(--line)] pt-2">
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Resolution rationale (one line — required; you are the second reviewer)"
+            className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[12px] outline-none focus:border-[var(--brand)]" />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <button disabled={!canSubmit} onClick={() => resolveAppeal(a.id, "upheld", note.trim(), { incomeAffecting })}
+              className="rounded-lg bg-[var(--good)] px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40">✓ Uphold — reverse{incomeAffecting ? " & remediate" : ""}</button>
+            <button disabled={!canSubmit} onClick={() => resolveAppeal(a.id, "denied", note.trim(), { incomeAffecting })}
+              className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-[12px] font-bold text-[var(--ink-2)] disabled:opacity-40">Deny — action stands</button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-1.5 text-[11px] text-[var(--ink-3)]">
+          {a.resolutionNote && <span className="italic">&ldquo;{a.resolutionNote}&rdquo; · </span>}
+          resolved {a.resolvedAt ? new Date(a.resolvedAt).toLocaleString() : ""} by a different reviewer
+          {a.remediation && (
+            <div className="mt-1.5 rounded-lg bg-[var(--good-tint)] px-2.5 py-1.5 text-[11px] text-[var(--ink-2)]">
+              <b className="text-[var(--good)]">Remediation applied:</b> {a.remediation.reversedAction && <>reversed &ldquo;{OUTCOME[a.remediation.reversedAction as OutcomeKind]?.label(a.sku) ?? a.remediation.reversedAction}&rdquo; · </>}
+              record corrected (excluded from future escalation history) · booking priority restored for {a.remediation.priorityBoostDays} days · {a.remediation.compensationNote}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OversightView({ appeals, decisions, flags }: { appeals: Appeal[]; decisions: QmDecision[]; flags: AutoFlag[] }) {
   const disagreed = decisions.filter((d) => d.outcome !== d.suggested);
   const agreedPct = decisions.length > 0 ? `${Math.round(((decisions.length - disagreed.length) / decisions.length) * 100)}%` : "—";
+  const resolved = appeals.filter((a) => a.status !== "open");
+  const upheld = appeals.filter((a) => a.status === "upheld");
+  const reversalPct = resolved.length > 0 ? `${Math.round((upheld.length / resolved.length) * 100)}%` : "—";
+  const remedyMins = useMemo(() => {
+    const mins = upheld
+      .filter((a) => a.resolvedAt)
+      .map((a) => (new Date(a.resolvedAt!).getTime() - new Date(a.createdAt).getTime()) / 60000)
+      .sort((x, y) => x - y);
+    if (mins.length === 0) return "—";
+    const m = mins[Math.floor(mins.length / 2)];
+    return m < 60 ? `${Math.max(1, Math.round(m))}m` : `${(m / 60).toFixed(1)}h`;
+  }, [upheld]);
+  const auditLog = useMemo(() => [...decisions].sort((a, b) => b.decidedAt.localeCompare(a.decidedAt)), [decisions]);
   const history = useMemo(() => ({
     appeals: OVERSIGHT_HISTORY.map((w) => ({ label: w.label, value: w.appeals })),
     overrides: OVERSIGHT_HISTORY.map((w) => ({ label: w.label, value: w.overrides })),
@@ -94,6 +153,8 @@ export default function OversightView({ appeals, decisions, flags }: { appeals: 
         <Stat n={String(disagreed.length)} label="You disagreed with the AI" sub="decisions changed or rejected" />
         <Stat n={String(flags.length)} label="Auto-decisions flagged" sub="marked as tagged wrong" />
         <Stat n={agreedPct} label="AI–human agreement" sub={decisions.length > 0 ? `of your ${decisions.length} decision${decisions.length === 1 ? "" : "s"}` : "no decisions yet"} />
+        <Stat n={reversalPct} label="Appeals upheld" sub={resolved.length > 0 ? `${upheld.length} of ${resolved.length} resolved — reversal rate` : "none resolved yet"} />
+        <Stat n={remedyMins} label="Time to remedy" sub="median, appeal filed → reversed" />
       </div>
 
       {/* 12-week pilot history (simulated) */}
@@ -104,23 +165,36 @@ export default function OversightView({ appeals, decisions, flags }: { appeals: 
           note="Simulated pilot history. Overrides and rejections fell as thresholds and the tagger were tuned on QM feedback." />
       </div>
 
-      {/* every appeal, verbatim */}
+      {/* every appeal, verbatim — open ones are resolved right here by a second reviewer */}
       <div className="uc-card p-4">
         <h4 className="text-[13px] font-bold">⚖ Appeals filed this session</h4>
+        <p className="mt-1 text-[11px] text-[var(--ink-3)]">A different QM than the original approver resolves each appeal. Upholding an income-affecting action reverses it immediately and applies the remediation policy: record corrected, booking priority restored, compensation reviewed.</p>
         {appeals.length === 0 ? (
           <p className="mt-2 text-[12px] text-[var(--ink-3)]">None yet. Partners file appeals from the partner app — open it via &ldquo;Partner view ↗&rdquo; in the top bar.</p>
         ) : (
           <div className="mt-2 space-y-2">
-            {appeals.map((a) => (
-              <div key={a.id} className="rounded-lg bg-[var(--page)] px-3 py-2 text-[12px]">
-                <div className="flex flex-wrap items-center gap-2">
-                  <b>{a.partnerName}</b>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[var(--ink-2)] ring-1 ring-[var(--line)]">{a.sku}</span>
-                  <span className="text-[var(--ink-3)]">contesting: {a.decisionLabel}</span>
-                  <span className="ml-auto text-[10px] text-[var(--ink-3)]">{new Date(a.createdAt).toLocaleString()}</span>
-                  <span className="rounded-full bg-[var(--info-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--info)]">Open</span>
-                </div>
-                <p className="mt-1 italic text-[var(--ink-2)]">&ldquo;{a.reason}&rdquo;</p>
+            {appeals.map((a) => <AppealCard key={a.id} a={a} />)}
+          </div>
+        )}
+      </div>
+
+      {/* audit log — every human decision this session, newest first, mirrored to the durable sink */}
+      <div className="uc-card p-4">
+        <h4 className="text-[13px] font-bold">🗂 Decision audit log</h4>
+        <p className="mt-1 text-[11px] text-[var(--ink-3)]">Every human decision: who, what the AI suggested, what was applied, and the recorded rationale. Each entry is also mirrored server-side to the durable audit trail (Langfuse) when configured.</p>
+        {auditLog.length === 0 ? (
+          <p className="mt-2 text-[12px] text-[var(--ink-3)]">No decisions yet this session.</p>
+        ) : (
+          <div className="mt-2 space-y-1.5">
+            {auditLog.map((d) => (
+              <div key={`${d.partnerId}|${d.sku}|${d.decidedAt}`} className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--page)] px-3 py-2 text-[12px]">
+                <b>{d.partnerId}</b>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[var(--ink-2)] ring-1 ring-[var(--line)]">{d.sku}</span>
+                <span className={d.outcome !== d.suggested ? "font-semibold text-[var(--warn)]" : "text-[var(--ink-2)]"}>
+                  {d.outcome !== d.suggested ? `overrode AI (${d.suggested}) → ` : "approved: "}{d.label}
+                </span>
+                {d.note && <span className="italic text-[var(--ink-3)]">&ldquo;{d.note}&rdquo;</span>}
+                <span className="ml-auto text-[10px] text-[var(--ink-3)]">{d.decidedBy} · {new Date(d.decidedAt).toLocaleString()}</span>
               </div>
             ))}
           </div>

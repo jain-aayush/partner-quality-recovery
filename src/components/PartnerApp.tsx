@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { fileAppeal, QmDecision, useDemoState } from "../lib/client-store";
+import { Appeal, fileAppeal, QmDecision, useDemoState } from "../lib/client-store";
 import type { Decision } from "../lib/model";
 import { OutcomeKind, suggestedOutcome } from "../lib/outcomes";
 import type { Pipeline2Response, SkuCase } from "./Pipeline2View";
@@ -65,7 +65,12 @@ export default function PartnerApp() {
   // QM action or CSV upload on the dashboard shows here instantly — and all survive refreshes.
   const demo = useDemoState();
   const qm = demo.decisions;
-  const appealedKeys = useMemo(() => new Set(demo.appeals.map((a) => `${a.partnerId}|${a.sku}`)), [demo.appeals]);
+  // Latest appeal per partner × SKU, so the partner sees its outcome (upheld / denied / in review).
+  const appealByKey = useMemo(() => {
+    const m = new Map<string, Appeal>();
+    for (const a of demo.appeals) m.set(`${a.partnerId}|${a.sku}`, a);
+    return m;
+  }, [demo.appeals]);
   const activeCsvText = demo.activeCsv?.csv ?? null;
 
   // Render whatever dataset the QM is looking at: the uploaded CSV if one is active, else the
@@ -153,7 +158,7 @@ export default function PartnerApp() {
               {cards.map((c) => {
                 const v = partnerView(c, qm[keyOf(c)]);
                 const cite = c.complaints[0]?.text;
-                const done = appealedKeys.has(keyOf(c));
+                const appeal = appealByKey.get(keyOf(c));
                 return (
                   <div key={keyOf(c)} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[var(--line)]">
                     <div className={`h-1 w-full ${STRIP[v.tone]}`} />
@@ -173,8 +178,15 @@ export default function PartnerApp() {
                         <p className="mt-2 text-[11px] text-[var(--ink-3)]">Feedback we saw: <span className="italic">&ldquo;{cite}&rdquo;</span></p>
                       )}
                       <div className="mt-3">
-                        {done ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--good-tint)] px-3 py-2 text-[12px] font-bold text-[var(--good)]">✓ Appeal sent</span>
+                        {appeal?.status === "upheld" ? (
+                          <div className="rounded-lg bg-[var(--good-tint)] px-3 py-2 text-[12px] text-[var(--good)]">
+                            <b>✓ Appeal upheld — reversed.</b>
+                            {appeal.remediation && <span className="font-normal text-[var(--ink-2)]"> Your record is corrected, booking priority is restored for {appeal.remediation.priorityBoostDays} days, and lost earnings are under compensation review.</span>}
+                          </div>
+                        ) : appeal?.status === "denied" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--page)] px-3 py-2 text-[12px] font-bold text-[var(--ink-2)]">Appeal reviewed — the decision stands</span>
+                        ) : appeal ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--good-tint)] px-3 py-2 text-[12px] font-bold text-[var(--good)]">✓ Appeal sent — a different reviewer is on it</span>
                         ) : (
                           <button onClick={() => setModal({ c, view: v })} className={`rounded-lg px-4 py-2 text-[12.5px] font-bold text-white transition-opacity hover:opacity-90 ${STRIP[v.tone]}`}>Appeal</button>
                         )}

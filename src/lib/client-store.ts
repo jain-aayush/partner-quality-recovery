@@ -22,6 +22,14 @@ export interface QmDecision {
   decidedAt: string;
 }
 
+/** Written when an appeal is upheld on an income-affecting action — the PRD §5b remediation record. */
+export interface Remediation {
+  reversedAction: string; // the action that was reversed
+  recordCorrected: boolean; // diagnosis marked overturned; excluded from future ladder history
+  priorityBoostDays: number; // booking-priority restoration window
+  compensationNote: string; // the predefined basis (PRD §5b), pending payout review
+}
+
 export interface Appeal {
   id: string;
   partnerId: string;
@@ -32,7 +40,11 @@ export interface Appeal {
   decisionLabel: string; // the partner-facing title they saw
   reason: string;
   createdAt: string;
-  status: "open";
+  status: "open" | "upheld" | "denied";
+  resolvedAt?: string;
+  resolvedBy?: string; // a different QM than the original approver (PRD §1c)
+  resolutionNote?: string;
+  remediation?: Remediation;
 }
 
 /** A QM marking an auto-handled case as incorrectly tagged (feeds the oversight tally). */
@@ -97,6 +109,24 @@ function subscribe(onChange: () => void) {
 
 export const demoKey = (partnerId: string, sku: string) => `${partnerId}|${sku}`;
 
+/**
+ * Mirror every human decision to the server audit sink (→ Langfuse when configured), so the
+ * durable per-decision audit record exists beyond this browser. Fire-and-forget: the demo store
+ * is the UI's source of truth and must never block or break on telemetry.
+ */
+function mirrorToAudit(event: "qm-decision" | "appeal-filed" | "appeal-resolved", payload: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  try {
+    void fetch("/api/decisions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event, payload }),
+    }).catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
 export function useDemoState(): DemoState {
   return useSyncExternalStore(subscribe, read, () => EMPTY);
 }
@@ -105,6 +135,7 @@ export function saveDecision(input: Omit<QmDecision, "decidedAt">): QmDecision {
   const decision: QmDecision = { ...input, decidedAt: new Date().toISOString() };
   const s = read();
   write({ ...s, decisions: { ...s.decisions, [demoKey(input.partnerId, input.sku)]: decision } });
+  mirrorToAudit("qm-decision", { ...decision });
   return decision;
 }
 
@@ -112,7 +143,57 @@ export function fileAppeal(input: Omit<Appeal, "id" | "createdAt" | "status">): 
   const s = read();
   const appeal: Appeal = { ...input, id: `ap-${s.appeals.length + 1}-${Date.now()}`, createdAt: new Date().toISOString(), status: "open" };
   write({ ...s, appeals: [...s.appeals, appeal] });
+  mirrorToAudit("appeal-filed", { ...appeal });
   return appeal;
+}
+
+/**
+ * Resolve an appeal (a different QM than the original approver — PRD §1c). Upholding an
+ * income-affecting action reverses it immediately (a superseding "no action" decision the partner
+ * app picks up) and writes the PRD §5b remediation record: record corrected, booking-priority
+ * restored, compensation reviewed on the predefined basis.
+ */
+export function resolveAppeal(id: string, verdict: "upheld" | "denied", resolutionNote: string, opts: { incomeAffecting: boolean }): Appeal | null {
+  const s = read();
+  const appeal = s.appeals.find((a) => a.id === id);
+  if (!appeal || appeal.status !== "open") return null;
+  const resolved: Appeal = {
+    ...appeal,
+    status: verdict,
+    resolvedAt: new Date().toISOString(),
+    resolvedBy: "qm-appeal-review",
+    resolutionNote,
+    ...(verdict === "upheld" && opts.incomeAffecting
+      ? {
+          remediation: {
+            reversedAction: appeal.action,
+            recordCorrected: true,
+            priorityBoostDays: 14,
+            compensationNote: "Median weekly earnings for this service × days restricted (PRD §5b), payout within 7 days",
+          } satisfies Remediation,
+        }
+      : {}),
+  };
+  const appeals = s.appeals.map((a) => (a.id === id ? resolved : a));
+  if (verdict === "upheld") {
+    // Reverse the contested action: a superseding "no action" decision, which the partner app renders as cleared.
+    const supersede: QmDecision = {
+      partnerId: appeal.partnerId,
+      sku: appeal.sku,
+      outcome: "keep_watching",
+      suggested: s.decisions[demoKey(appeal.partnerId, appeal.sku)]?.outcome ?? "keep_watching",
+      label: "Appeal upheld — action reversed",
+      note: resolutionNote,
+      status: "rejected",
+      decidedBy: "qm-appeal-review",
+      decidedAt: new Date().toISOString(),
+    };
+    write({ ...s, appeals, decisions: { ...s.decisions, [demoKey(appeal.partnerId, appeal.sku)]: supersede } });
+  } else {
+    write({ ...s, appeals });
+  }
+  mirrorToAudit("appeal-resolved", { ...resolved });
+  return resolved;
 }
 
 export function toggleFlag(input: Omit<AutoFlag, "flaggedAt">) {
