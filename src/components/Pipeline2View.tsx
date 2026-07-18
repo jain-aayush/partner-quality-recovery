@@ -5,11 +5,11 @@
  * what needs their call, why, and act on it. Data comes from /api/pipeline2.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import type { Appeal } from "../lib/appeals-store";
-import type { QmDecision } from "../lib/decisions-store";
+import { useMemo, useState } from "react";
+import { Appeal, AutoFlag, QmDecision, saveDecision, toggleFlag, useDemoState } from "../lib/client-store";
 import type { CaseReview, Decision, Diagnosis, ExcludedSummary, Progress, ProgressStatus, SkuAggregate, WeekBucket } from "../lib/model";
 import { OUTCOME, OutcomeKind, QM_ALTERNATIVES, suggestedOutcome } from "../lib/outcomes";
+import OversightView from "./OversightView";
 
 export interface SkuCase {
   row: SkuAggregate; diagnosis: Diagnosis; decision: Decision;
@@ -77,24 +77,44 @@ function Bar({ rate, tone }: { rate: number; tone: Tone }) {
 
 const SAFETY_LABEL: Record<string, string> = { injury: "Injury", harassment: "Harassment", theft: "Theft", hygiene: "Hygiene" };
 
-// Week-over-week: counted complaints out of jobs, one bar per 7-day bucket in the decision window.
-function WeekStrip({ weekly, tone }: { weekly: WeekBucket[]; tone: Tone }) {
+// Week-over-week complaint rate — a single-series trend line on a zero baseline. Only the latest
+// and worst weeks are labeled (counts, e.g. "6/13"); hover any dot for the full figures.
+function WeekTrend({ weekly, tone }: { weekly: WeekBucket[]; tone: Tone }) {
   if (weekly.length === 0) return null;
-  const max = Math.max(0.0001, ...weekly.map((w) => w.rate));
+  const W = 560, H = 116, padL = 40, padR = 16, padT = 18, padB = 26;
+  const maxRate = Math.max(0.08, ...weekly.map((w) => w.rate)) * 1.3;
+  const step = weekly.length > 1 ? (W - padL - padR) / (weekly.length - 1) : 0;
+  const x = (i: number) => padL + i * step;
+  const y = (r: number) => padT + (1 - r / maxRate) * (H - padT - padB);
+  const color = `var(${tone === "green" ? "--good" : tone === "red" ? "--bad" : tone === "amber" ? "--warn" : "--info"})`;
+  const tickPct = Math.max(5, Math.round((maxRate * 100) / 1.3 / 5) * 5);
+  const peak = weekly.reduce((bi, w, i, arr) => (w.rate > arr[bi].rate ? i : bi), 0);
+  const last = weekly.length - 1;
+  const line = weekly.map((w, i) => `${x(i)},${y(w.rate)}`).join(" ");
   return (
     <div className="mt-3">
-      <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink-3)]">Week by week — complaints / jobs</div>
-      <div className="flex items-end gap-1.5">
+      <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[var(--ink-3)]">Week by week — complaints / jobs</div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Weekly complaint rate, share of jobs with a counted complaint">
+        <line x1={padL} y1={y(tickPct / 100)} x2={W - padR} y2={y(tickPct / 100)} stroke="var(--line)" strokeWidth={1} />
+        <text x={padL - 6} y={y(tickPct / 100) + 3} textAnchor="end" fontSize={10} fill="var(--ink-3)">{tickPct}%</text>
+        <line x1={padL} y1={y(0)} x2={W - padR} y2={y(0)} stroke="var(--line)" strokeWidth={1} />
+        <text x={padL - 6} y={y(0) + 3} textAnchor="end" fontSize={10} fill="var(--ink-3)">0</text>
+        <polygon points={`${x(0)},${y(0)} ${line} ${x(last)},${y(0)}`} fill={color} opacity={0.08} />
+        <polyline points={line} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         {weekly.map((w, i) => (
-          <div key={i} className="flex flex-1 flex-col items-center gap-1">
-            <span className="text-[10px] font-bold text-[var(--ink-2)]">{w.complaints}/{w.bookings}</span>
-            <div className="flex h-9 w-full items-end overflow-hidden rounded bg-[var(--page)]" title={`${w.label}: ${w.complaints} of ${w.bookings} jobs (${Math.round(w.rate * 100)}%)`}>
-              <div className={`w-full ${TONE[tone].bar}`} style={{ height: `${Math.max(8, (w.rate / max) * 100)}%` }} />
-            </div>
-            <span className="text-[10px] text-[var(--ink-3)]">{w.label}</span>
-          </div>
+          <g key={i}>
+            <title>{`${w.label}: ${w.complaints} of ${w.bookings} jobs (${Math.round(w.rate * 100)}%)`}</title>
+            <circle cx={x(i)} cy={y(w.rate)} r={12} fill="transparent" />
+            <circle cx={x(i)} cy={y(w.rate)} r={4} fill={color} stroke="var(--card)" strokeWidth={2} />
+            {(i === last || i === peak) && (
+              <text x={x(i)} y={y(w.rate) - 9} textAnchor={i === last ? "end" : "middle"} fontSize={10.5} fontWeight={700} fill="var(--ink-2)">
+                {w.complaints}/{w.bookings}
+              </text>
+            )}
+            <text x={x(i)} y={H - 8} textAnchor={i === 0 ? "start" : i === last ? "end" : "middle"} fontSize={10} fill="var(--ink-3)">{w.label}</text>
+          </g>
         ))}
-      </div>
+      </svg>
     </div>
   );
 }
@@ -224,7 +244,7 @@ function DecisionCard({ c, ps, cfg, draft, onDraft, onApply, qm, appeal }: {
         )}
 
         {/* week-over-week complaints / jobs */}
-        <WeekStrip weekly={c.weekly} tone={b.tone} />
+        <WeekTrend weekly={c.weekly} tone={b.tone} />
 
         {/* evidence — verbatim (out_of_taxonomy falls back to the complaint text) */}
         {summaryQuotes.length > 0 && (
@@ -405,6 +425,65 @@ function ProgressCard({ p }: { p: Progress }) {
   );
 }
 
+// ── auto-handled card — human oversight over the automation ───────────────────
+// The QM can flag a wrong tag (feeds the oversight tally + tagger QC) or override the action
+// entirely; an override is a first-class QM decision, so the partner app reflects it immediately.
+function AutoCard({ c, ps, qm, appeal, flag }: { c: SkuCase; ps: PartnerRollup[]; qm?: QmDecision; appeal?: Appeal; flag?: AutoFlag }) {
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const canSubmit = note.trim().length >= 8;
+  const autoLabel = c.decision.actions.map((a) => ACTION[a] ?? a).join(" + ");
+  function override(outcome: OutcomeKind) {
+    saveDecision({
+      partnerId: c.row.partnerId, sku: c.row.sku, outcome, label: OUTCOME[outcome].label(c.row.sku),
+      note: note.trim(), status: outcome === "keep_watching" ? "rejected" : "applied",
+      decidedBy: "qm", suggested: suggestedOutcome(c.decision),
+    });
+    setOpen(false);
+  }
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-[12px]">
+      <div className="flex flex-wrap items-center gap-2">
+        <b>{nameOf(ps, c.row.partnerId)}</b>
+        <Chip tone="purple">{c.row.sku}</Chip>
+        <span className="text-[var(--ink-3)]">{CAUSE[c.decision.cause]?.label ?? c.decision.cause}</span>
+        {c.decision.actions.map((a) => <Chip key={a} tone="green">{ACTION[a] ?? a}</Chip>)}
+        {appeal && <Chip tone="info">⚖ Partner appealed</Chip>}
+        {flag && !qm && <Chip tone="amber">🚩 Flagged — tag looks wrong</Chip>}
+        {!qm && (
+          <span className="ml-auto flex items-center gap-1.5">
+            <button onClick={() => toggleFlag({ partnerId: c.row.partnerId, partnerName: nameOf(ps, c.row.partnerId), sku: c.row.sku, autoLabel, cause: c.decision.cause })}
+              className="rounded-lg border border-[var(--line)] px-2.5 py-1 text-[11px] font-bold text-[var(--ink-2)] hover:bg-[var(--page)]">{flag ? "Unflag" : "🚩 Flag as wrong"}</button>
+            <button onClick={() => setOpen((v) => !v)}
+              className="rounded-lg border border-[var(--line)] px-2.5 py-1 text-[11px] font-bold text-[var(--ink-2)] hover:bg-[var(--page)]">Override…</button>
+          </span>
+        )}
+      </div>
+      {appeal && <p className="mt-1.5 rounded-lg bg-[var(--info-tint)] px-2.5 py-1.5 text-[11px] italic text-[var(--ink-2)]">&ldquo;{appeal.reason}&rdquo;</p>}
+      {qm && (
+        <p className={`mt-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${qm.status === "rejected" ? "bg-[var(--page)] text-[var(--ink-2)]" : "bg-[var(--warn-tint)] text-[var(--warn)]"}`}>
+          ✎ You overrode this: {qm.status === "rejected" ? "no action — auto-decision undone" : qm.label} — sent to partner
+          {qm.note && <span className="font-normal italic"> · &ldquo;{qm.note}&rdquo;</span>}
+        </p>
+      )}
+      {!qm && open && (
+        <div className="mt-2 border-t border-[var(--line)] pt-2">
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why is the auto-decision wrong? (one line — required to override)"
+            className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[12px] outline-none focus:border-[var(--brand)]" />
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <button disabled={!canSubmit} onClick={() => override("keep_watching")}
+              className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-[12px] font-bold text-[var(--ink-2)] disabled:opacity-40">Undo — no action</button>
+            {QM_ALTERNATIVES.map((o) => (
+              <button key={o} disabled={!canSubmit} onClick={() => override(o)}
+                className={`rounded-lg px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40 ${o === "offboard" || o === "hard_ban_sku" ? "bg-[var(--bad)]" : "bg-[var(--warn)]"}`}>{OUTCOME[o].label(c.row.sku)}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Tile({ n, label, tone, active, onClick }: { n: number; label: string; tone: Tone; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} className={`flex-1 rounded-2xl border p-4 text-left transition-all ${active ? "border-[var(--brand)] ring-2 ring-[var(--brand-tint)]" : "border-[var(--line)] hover:border-[var(--ink-3)]"} bg-white`}>
@@ -418,15 +497,13 @@ function Tile({ n, label, tone, active, onClick }: { n: number; label: string; t
 export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
   const { cases, partners, config } = data;
   const progress = data.progress ?? [];
-  const [tab, setTab] = useState<"queue" | "progress" | "partners" | "auto">("queue");
+  const [tab, setTab] = useState<"queue" | "progress" | "partners" | "auto" | "oversight">("queue");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [appeals, setAppeals] = useState<Appeal[]>([]);
-  const [qmByKey, setQmByKey] = useState<Record<string, QmDecision>>({});
-
-  const loadAppeals = () => { fetch("/api/appeals").then((r) => r.json()).then((j) => setAppeals(j.appeals ?? [])).catch(() => {}); };
-  const loadDecisions = () => { fetch("/api/decisions").then((r) => r.json()).then((j: { decisions: QmDecision[] }) => setQmByKey(Object.fromEntries((j.decisions ?? []).map((d) => [`${d.partnerId}|${d.sku}`, d])))).catch(() => {}); };
-  // Poll both stores so partner-filed appeals and our own applied decisions stay in sync.
-  useEffect(() => { loadAppeals(); loadDecisions(); const t = setInterval(() => { loadAppeals(); loadDecisions(); }, 5000); return () => clearInterval(t); }, []);
+  // Shared browser-local state — partner-filed appeals, our applied decisions, and auto-decision
+  // flags all live in localStorage, so they survive refreshes and work on serverless hosting.
+  const demo = useDemoState();
+  const qmByKey = demo.decisions;
+  const appeals = useMemo(() => [...demo.appeals].sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [demo.appeals]);
 
   // Latest appeal per partner × SKU, for the inline badge.
   const appealByKey = useMemo(() => {
@@ -438,21 +515,17 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
   // The QM applies / overrides / rejects — persisted, then read back by the partner app.
   // Platform-wide outcomes (7-day pause · all services, remove from platform) act on EVERY one of
   // the partner's services, not just the SKU the card belongs to.
-  async function applyDecision(c: SkuCase, outcome: OutcomeKind, label: string) {
+  function applyDecision(c: SkuCase, outcome: OutcomeKind, label: string) {
     const note = drafts[key(c)] ?? "";
     const platformWide = outcome === "soft_ban_platform" || outcome === "offboard";
     const targets = platformWide ? cases.filter((x) => x.row.partnerId === c.row.partnerId) : [c];
-    const results = await Promise.all(targets.map((t) =>
-      fetch("/api/decisions", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ partnerId: t.row.partnerId, sku: t.row.sku, outcome, label, note }),
-      }).then((r) => (r.ok ? (r.json() as Promise<{ decision: QmDecision }>) : null)).catch(() => null),
-    ));
-    setQmByKey((m) => {
-      const next = { ...m };
-      results.forEach((j, i) => { if (j?.decision) next[key(targets[i])] = j.decision; });
-      return next;
-    });
+    for (const t of targets) {
+      saveDecision({
+        partnerId: t.row.partnerId, sku: t.row.sku, outcome, label, note,
+        status: outcome === "keep_watching" ? "rejected" : "applied",
+        decidedBy: "qm", suggested: suggestedOutcome(t.decision),
+      });
+    }
   }
 
   const queue = useMemo(() => {
@@ -467,6 +540,9 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
   const safetyN = cases.filter((c) => c.decision.track === "safety").length;
   const unimpN = partners.filter((p) => p.unimprovable).length;
   const doneN = decidable.filter((c) => qmByKey[key(c)]).length;
+  const decisionsList = useMemo(() => Object.values(qmByKey), [qmByKey]);
+  const disagreedN = decisionsList.filter((d) => d.outcome !== d.suggested).length;
+  const flagsN = Object.keys(demo.flags).length;
 
   const byPartner = useMemo(() => {
     const m = new Map<string, SkuCase[]>();
@@ -498,7 +574,7 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
         <Tile n={safetyN} label="Safety alerts" tone="red" active={false} onClick={() => setTab("queue")} />
         <Tile n={unimpN} label="Flag to remove" tone="red" active={tab === "partners"} onClick={() => setTab("partners")} />
         <Tile n={autoActed.length} label="Handled for you" tone="green" active={tab === "auto"} onClick={() => setTab("auto")} />
-        <Tile n={appeals.length} label="Partner appeals" tone="info" active={false} onClick={() => setTab("queue")} />
+        <Tile n={appeals.length} label="Partner appeals" tone="info" active={tab === "oversight"} onClick={() => setTab("oversight")} />
       </div>
 
       {/* tabs */}
@@ -507,6 +583,7 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
         <TabBtn id="progress" label="In progress" n={progress.length} />
         <TabBtn id="partners" label="Partners" n={partners.length} />
         <TabBtn id="auto" label="Auto-handled" n={autoActed.length + monitoring.length} />
+        <TabBtn id="oversight" label="Oversight" n={appeals.length + disagreedN + flagsN} />
         {tab === "queue" && decidable.length > 0 && (
           <span className="ml-auto pr-2 text-[12px] font-semibold text-[var(--ink-3)]">{doneN}/{decidable.length} done</span>
         )}
@@ -543,23 +620,12 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
       {tab === "auto" && (
         <div className="space-y-4">
           <div>
-            <h3 className="mb-2 text-[14px] font-bold">✅ Done automatically <span className="text-[12px] font-normal text-[var(--ink-3)]">— low-risk help, high confidence</span></h3>
+            <h3 className="mb-1 text-[14px] font-bold">✅ Done automatically <span className="text-[12px] font-normal text-[var(--ink-3)]">— low-risk help, high confidence</span></h3>
+            <p className="mb-2 text-[12px] text-[var(--ink-3)]">Spot-check these. <b>Flag</b> a wrong tag so the tagger learns (the action stays until you change it); <b>Override</b> replaces the action — the partner sees your call, not the AI&apos;s.</p>
             <div className="space-y-2">
-              {autoActed.map((c) => {
-                const ap = appealByKey.get(key(c));
-                return (
-                  <div key={key(c)} className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-[12px]">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <b>{nameOf(partners, c.row.partnerId)}</b>
-                      <Chip tone="purple">{c.row.sku}</Chip>
-                      <span className="text-[var(--ink-3)]">{CAUSE[c.decision.cause]?.label ?? c.decision.cause}</span>
-                      {c.decision.actions.map((a) => <Chip key={a} tone="green">{ACTION[a] ?? a}</Chip>)}
-                      {ap && <Chip tone="info">⚖ Partner appealed</Chip>}
-                    </div>
-                    {ap && <p className="mt-1.5 rounded-lg bg-[var(--info-tint)] px-2.5 py-1.5 text-[11px] italic text-[var(--ink-2)]">&ldquo;{ap.reason}&rdquo;</p>}
-                  </div>
-                );
-              })}
+              {autoActed.map((c) => (
+                <AutoCard key={key(c)} c={c} ps={partners} qm={qmByKey[key(c)]} appeal={appealByKey.get(key(c))} flag={demo.flags[key(c)]} />
+              ))}
               {autoActed.length === 0 && <p className="text-[12px] text-[var(--ink-3)]">Nothing this cycle.</p>}
             </div>
           </div>
@@ -571,6 +637,10 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
             </div>
           </details>
         </div>
+      )}
+
+      {tab === "oversight" && (
+        <OversightView appeals={appeals} decisions={decisionsList} flags={Object.values(demo.flags)} />
       )}
     </div>
   );
