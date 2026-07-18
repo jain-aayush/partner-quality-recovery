@@ -31,15 +31,23 @@ const SAFETY: Record<SafetySubtype, string[]> = {
 
 // Non-safety problem-class keywords → the closed taxonomy.
 const PROBLEM: Partial<Record<ProblemClass, string[]>> = {
-  skill_issue: ["patchy", "uneven", "streak", "wrong shade", "bad technique", "botched", "one side", "poorly done", "messed up my"],
-  time: ["rushed", "hurried", "left early", "on the phone", "next booking", "half done", "in a hurry", "hours late", "arrived late"],
-  undisclosed_supplies: ["cheap product", "unbranded", "not the brand", "substituted", "refilled", "local product", "different product"],
+  skill_issue: ["patchy", "uneven", "streak", "wrong shade", "bad technique", "botched", "one side", "poorly done", "messed up my",
+    // home-cleaning quality terms
+    "missed spot", "missed the corner", "missed corners", "still dirty", "still grimy", "left grime", "left dirty", "hard water", "water stain", "water mark", "soap scum", "grease left", "grease everywhere", "left grease", "not scrubbed", "damaged my", "scratched my", "untrained", "undertrained"],
+  time: ["rushed", "hurried", "left early", "on the phone", "next booking", "half done", "in a hurry", "hours late", "arrived late",
+    // home-cleaning timing terms
+    "no show", "no-show", "did not show", "didn't show", "didn't turn up", "cancelled last minute"],
+  undisclosed_supplies: ["cheap product", "unbranded", "not the brand", "substituted", "refilled", "local product", "different product",
+    // home-cleaning supplies terms
+    "cheap cleaner", "own cleaner", "used my own", "brought no supplies", "no supplies"],
   partner_attitude: ["rude", "unprofessional", "arrogant", "argued", "disrespectful", "attitude", "shouted"],
   pricing: ["overcharged", "too expensive", "extra charge", "hidden charge", "asked for more money", "overpriced"],
 };
 
 // Signal that a bad outcome was outside the partner's control (feeds unfair_review).
-const UNFAIR = ["already damaged", "like the photo", "like the picture", "celebrity", "unrealistic", "previous salon", "film star", "my hair was", "expected too much"];
+const UNFAIR = ["already damaged", "like the photo", "like the picture", "celebrity", "unrealistic", "previous salon", "film star", "my hair was", "expected too much",
+  // customer's-own-doing terms (home-cleaning): the mess/stain pre-existed the visit
+  "already there", "already stained", "already broken", "was already"];
 
 // Intensity words bump numeric severity toward the quality-severe (>=4) band.
 const INTENSITY = ["worst", "terrible", "ruined", "disaster", "total mess", "never again", "horrible", "awful"];

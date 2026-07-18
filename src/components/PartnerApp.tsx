@@ -61,23 +61,34 @@ export default function PartnerApp() {
   const [selected, setSelected] = useState<string>("");
   const [modal, setModal] = useState<{ c: SkuCase; view: View } | null>(null);
 
-  // QM decisions and this partner's appeals come from the shared browser-local store, so a QM
-  // action on the dashboard shows here instantly — and both survive refreshes.
+  // QM decisions, appeals AND the active dataset come from the shared browser-local store, so a
+  // QM action or CSV upload on the dashboard shows here instantly — and all survive refreshes.
   const demo = useDemoState();
   const qm = demo.decisions;
   const appealedKeys = useMemo(() => new Set(demo.appeals.map((a) => `${a.partnerId}|${a.sku}`)), [demo.appeals]);
+  const activeCsvText = demo.activeCsv?.csv ?? null;
 
+  // Render whatever dataset the QM is looking at: the uploaded CSV if one is active, else the
+  // bundled sample. /api/pipeline2 is stateless — we send the CSV along, nothing lives server-side.
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
     (async () => {
       try {
-        const res = await fetch("/api/pipeline2", { method: "POST" });
+        const res = await fetch(
+          "/api/pipeline2",
+          activeCsvText
+            ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ csv: activeCsvText }) }
+            : { method: "POST" },
+        );
         const j = (await res.json()) as Pipeline2Response;
         if (!res.ok) throw new Error("Couldn't load your updates.");
-        setData(j);
-      } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
-      finally { setLoading(false); }
+        if (!cancelled) { setData(j); setError(null); }
+      } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); }
+      finally { if (!cancelled) setLoading(false); }
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, [activeCsvText]);
 
   const partnerOptions = useMemo(() => {
     if (!data) return [] as { id: string; name: string }[];
@@ -85,7 +96,10 @@ export default function PartnerApp() {
     return data.partners.filter((p) => shown.has(p.partnerId)).map((p) => ({ id: p.partnerId, name: p.name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [data, qm]);
 
-  useEffect(() => { if (!selected && partnerOptions.length) setSelected(partnerOptions[0].id); }, [partnerOptions, selected]);
+  // Keep a valid selection when the dataset switches (an uploaded roster has different partners).
+  useEffect(() => {
+    if (partnerOptions.length && (!selected || !partnerOptions.some((p) => p.id === selected))) setSelected(partnerOptions[0].id);
+  }, [partnerOptions, selected]);
 
   const partner = partnerOptions.find((p) => p.id === selected);
   const cards = useMemo(() => {

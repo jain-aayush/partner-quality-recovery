@@ -45,14 +45,22 @@ export interface AutoFlag {
   flaggedAt: string;
 }
 
+/** The QM's uploaded CSV — the dataset BOTH routes render, so /partner mirrors the dashboard. */
+export interface ActiveCsv {
+  name: string;
+  csv: string;
+  uploadedAt: string;
+}
+
 export interface DemoState {
   decisions: Record<string, QmDecision>; // keyed by `${partnerId}|${sku}`
   appeals: Appeal[];
   flags: Record<string, AutoFlag>; // keyed by `${partnerId}|${sku}`
+  activeCsv: ActiveCsv | null; // null → bundled sample
 }
 
 const KEY = "uc-demo-state-v1";
-const EMPTY: DemoState = { decisions: {}, appeals: [], flags: {} };
+const EMPTY: DemoState = { decisions: {}, appeals: [], flags: {}, activeCsv: null };
 
 // Cache keyed on the raw string so useSyncExternalStore gets a stable snapshot reference.
 let cache: DemoState = EMPTY;
@@ -114,6 +122,12 @@ export function toggleFlag(input: Omit<AutoFlag, "flaggedAt">) {
   if (flags[k]) delete flags[k];
   else flags[k] = { ...input, flaggedAt: new Date().toISOString() };
   write({ ...s, flags });
+}
+
+/** Set (or clear, with null) the dataset the whole demo runs on. */
+export function setActiveCsv(active: { name: string; csv: string } | null) {
+  const s = read();
+  write({ ...s, activeCsv: active ? { ...active, uploadedAt: new Date().toISOString() } : null });
 }
 
 export function resetDemoState() {
