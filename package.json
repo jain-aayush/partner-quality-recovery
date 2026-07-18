@@ -13,6 +13,9 @@
     "generate:timeline": "tsx data/generate-timeline.ts",
     "eval": "tsx evals/run.ts",
     "eval:v2": "tsx evals/run2.ts",
+    "eval:robustness": "tsx evals/robustness.ts",
+    "eval:fairness": "tsx evals/fairness.ts",
+    "eval:stability": "tsx evals/stability.ts",
     "seed:langfuse": "tsx scripts/seed-langfuse-dataset.ts",
     "experiment": "tsx scripts/run-experiment.ts"
   },
