@@ -5,8 +5,11 @@
  * what needs their call, why, and act on it. Data comes from /api/pipeline2.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { Appeal } from "../lib/appeals-store";
+import type { QmDecision } from "../lib/decisions-store";
 import type { CaseReview, Decision, Diagnosis, ExcludedSummary, Progress, ProgressStatus, SkuAggregate, WeekBucket } from "../lib/model";
+import { OUTCOME, OutcomeKind, QM_ALTERNATIVES, suggestedOutcome } from "../lib/outcomes";
 
 export interface SkuCase {
   row: SkuAggregate; diagnosis: Diagnosis; decision: Decision;
@@ -18,7 +21,6 @@ export interface PartnerRollup {
 }
 export interface Pipeline2Response { cases: SkuCase[]; partners: PartnerRollup[]; progress?: Progress[]; config?: Record<string, number>; source?: string; rowCount?: number; issues?: string[]; backfillCount?: number }
 
-type Choice = "approved" | "rejected" | "info";
 type Tone = "red" | "amber" | "green" | "purple" | "info" | "gray";
 
 const TONE: Record<Tone, { chip: string; bar: string; strip: string }> = {
@@ -135,9 +137,10 @@ function ReviewList({ complaints, excluded }: { complaints: CaseReview[]; exclud
 }
 
 // ── decision card ─────────────────────────────────────────────────────────────
-function DecisionCard({ c, ps, cfg, decided, draft, onDraft, onDecide }: {
+function DecisionCard({ c, ps, cfg, draft, onDraft, onApply, qm, appeal }: {
   c: SkuCase; ps: PartnerRollup[]; cfg?: Record<string, number>;
-  decided?: { choice: Choice; note: string }; draft: string; onDraft: (v: string) => void; onDecide: (ch: Choice) => void;
+  draft: string; onDraft: (v: string) => void; onApply: (outcome: OutcomeKind, label: string) => void;
+  qm?: QmDecision; appeal?: Appeal;
 }) {
   const { row, diagnosis, decision } = c;
   const b = bucket(c);
@@ -147,6 +150,8 @@ function DecisionCard({ c, ps, cfg, decided, draft, onDraft, onDecide }: {
   const isSafety = decision.track === "safety";
   const slaHrs = b.tone === "red" && isSafety ? (cfg?.safetyFastTrackHours ?? 6) : (cfg?.qmSlaHours ?? 72);
   const canSubmit = draft.trim().length >= 8;
+  const suggested = suggestedOutcome(decision);
+  const alternatives = QM_ALTERNATIVES.filter((a) => a !== suggested);
   // out_of_taxonomy carries no keyword evidence — fall back to the verbatim complaint text as its summary.
   const summaryQuotes = diagnosis.evidenceQuotes.length > 0 ? diagnosis.evidenceQuotes.slice(0, 2) : c.complaints.slice(0, 2).map((r) => r.text);
 
@@ -162,11 +167,20 @@ function DecisionCard({ c, ps, cfg, decided, draft, onDraft, onDecide }: {
             <span className="text-[12px] text-[var(--ink-3)]">{row.zone}</span>
           </div>
           <div className="flex items-center gap-1.5">
+            {appeal && <Chip tone="info">⚖ Partner appealed</Chip>}
             {c.priorCoached && <Chip tone="amber">↻ Coached before</Chip>}
             <Chip tone={b.tone}>{b.label}</Chip>
             {!held && <span className="text-[11px] font-semibold text-[var(--ink-3)]">⏱ {slaHrs}h</span>}
           </div>
         </div>
+
+        {/* partner's appeal, if they filed one from the partner app */}
+        {appeal && (
+          <div className="mt-3 rounded-xl border border-[var(--info)] bg-[var(--info-tint)] p-3">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--info)]">⚖ Partner appealed this decision</div>
+            <p className="mt-1 text-[12px] italic text-[var(--ink-2)]">&ldquo;{appeal.reason}&rdquo;</p>
+          </div>
+        )}
 
         {/* the problem, in plain words + how common */}
         <div className="mt-3 flex items-center gap-3">
@@ -235,26 +249,34 @@ function DecisionCard({ c, ps, cfg, decided, draft, onDraft, onDecide }: {
 
         {/* recommendation */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-3)]">{decision.immediateActions.length > 0 ? "Your decision" : "We suggest"}</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-3)]">AI suggests</span>
           {decision.actions.map((a) => <Chip key={a} tone="purple">{ACTION[a] ?? a}</Chip>)}
         </div>
 
-        {/* decision */}
-        {held ? (
-          <p className="mt-3 rounded-xl bg-[var(--page)] px-3 py-2 text-[12px] text-[var(--ink-2)]">Just one report so far — we wait for a second before pausing, so a single complaint can&apos;t knock her offline unfairly.</p>
-        ) : decided ? (
-          <div className={`mt-3 rounded-xl px-3 py-2 text-[12px] font-semibold ${decided.choice === "approved" ? "bg-[var(--good-tint)] text-[var(--good)]" : decided.choice === "rejected" ? "bg-[var(--bad-tint)] text-[var(--bad)]" : "bg-[var(--warn-tint)] text-[var(--warn)]"}`}>
-            {decided.choice === "approved" ? "✓ Approved by you" : decided.choice === "rejected" ? "✗ Rejected by you" : "↩ Sent back for more info"} — logged
-            <div className="mt-0.5 font-normal italic text-[var(--ink-2)]">&ldquo;{decided.note}&rdquo;</div>
+        {/* decision — approve the suggestion, take a different action, or reject. Flows to the partner. */}
+        {qm ? (
+          <div className={`mt-3 rounded-xl px-3 py-2 text-[12px] font-semibold ${qm.status === "rejected" ? "bg-[var(--page)] text-[var(--ink-2)]" : OUTCOME[qm.outcome].incomeAffecting ? "bg-[var(--bad-tint)] text-[var(--bad)]" : "bg-[var(--good-tint)] text-[var(--good)]"}`}>
+            {qm.status === "rejected" ? "✗ No action taken" : `✓ Applied: ${qm.label}`} — sent to partner
+            {qm.note && <div className="mt-0.5 font-normal italic text-[var(--ink-2)]">&ldquo;{qm.note}&rdquo;</div>}
           </div>
+        ) : held ? (
+          <p className="mt-3 rounded-xl bg-[var(--page)] px-3 py-2 text-[12px] text-[var(--ink-2)]">Just one report so far — we wait for a second before pausing, so a single complaint can&apos;t knock her offline unfairly.</p>
         ) : (
           <div className="mt-3 border-t border-[var(--line)] pt-3">
-            <input value={draft} onChange={(e) => onDraft(e.target.value)} placeholder="Why? (one line — saved with your decision)"
+            <input value={draft} onChange={(e) => onDraft(e.target.value)} placeholder="Record your rationale (one line — required to act)"
               className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[12px] outline-none focus:border-[var(--brand)]" />
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button disabled={!canSubmit} onClick={() => onDecide("approved")} className="rounded-lg bg-[var(--good)] px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">✓ Approve</button>
-              <button disabled={!canSubmit} onClick={() => onDecide("rejected")} className="rounded-lg bg-[var(--bad)] px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">✗ Reject</button>
-              <button disabled={!canSubmit} onClick={() => onDecide("info")} className="rounded-lg border border-[var(--line)] px-4 py-2 text-[13px] font-bold text-[var(--ink-2)] disabled:opacity-40">More info</button>
+              <button disabled={!canSubmit} onClick={() => onApply(suggested, OUTCOME[suggested].label(row.sku))}
+                className="rounded-lg bg-[var(--good)] px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">✓ Approve: {OUTCOME[suggested].label(row.sku)}</button>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-[var(--ink-3)]">or act differently</span>
+              {alternatives.map((o) => (
+                <button key={o} disabled={!canSubmit} onClick={() => onApply(o, OUTCOME[o].label(row.sku))}
+                  className={`rounded-lg px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40 ${o === "offboard" || o === "hard_ban_sku" ? "bg-[var(--bad)]" : "bg-[var(--warn)]"}`}>{OUTCOME[o].label(row.sku)}</button>
+              ))}
+              <button disabled={!canSubmit} onClick={() => onApply("keep_watching", OUTCOME.keep_watching.label(row.sku))}
+                className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-[12px] font-bold text-[var(--ink-2)] disabled:opacity-40">Reject — no action</button>
             </div>
           </div>
         )}
@@ -397,8 +419,41 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
   const { cases, partners, config } = data;
   const progress = data.progress ?? [];
   const [tab, setTab] = useState<"queue" | "progress" | "partners" | "auto">("queue");
-  const [decided, setDecided] = useState<Record<string, { choice: Choice; note: string }>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
+  const [qmByKey, setQmByKey] = useState<Record<string, QmDecision>>({});
+
+  const loadAppeals = () => { fetch("/api/appeals").then((r) => r.json()).then((j) => setAppeals(j.appeals ?? [])).catch(() => {}); };
+  const loadDecisions = () => { fetch("/api/decisions").then((r) => r.json()).then((j: { decisions: QmDecision[] }) => setQmByKey(Object.fromEntries((j.decisions ?? []).map((d) => [`${d.partnerId}|${d.sku}`, d])))).catch(() => {}); };
+  // Poll both stores so partner-filed appeals and our own applied decisions stay in sync.
+  useEffect(() => { loadAppeals(); loadDecisions(); const t = setInterval(() => { loadAppeals(); loadDecisions(); }, 5000); return () => clearInterval(t); }, []);
+
+  // Latest appeal per partner × SKU, for the inline badge.
+  const appealByKey = useMemo(() => {
+    const m = new Map<string, Appeal>();
+    for (const a of appeals) { const k = `${a.partnerId}|${a.sku}`; if (!m.has(k)) m.set(k, a); }
+    return m;
+  }, [appeals]);
+
+  // The QM applies / overrides / rejects — persisted, then read back by the partner app.
+  // Platform-wide outcomes (7-day pause · all services, remove from platform) act on EVERY one of
+  // the partner's services, not just the SKU the card belongs to.
+  async function applyDecision(c: SkuCase, outcome: OutcomeKind, label: string) {
+    const note = drafts[key(c)] ?? "";
+    const platformWide = outcome === "soft_ban_platform" || outcome === "offboard";
+    const targets = platformWide ? cases.filter((x) => x.row.partnerId === c.row.partnerId) : [c];
+    const results = await Promise.all(targets.map((t) =>
+      fetch("/api/decisions", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ partnerId: t.row.partnerId, sku: t.row.sku, outcome, label, note }),
+      }).then((r) => (r.ok ? (r.json() as Promise<{ decision: QmDecision }>) : null)).catch(() => null),
+    ));
+    setQmByKey((m) => {
+      const next = { ...m };
+      results.forEach((j, i) => { if (j?.decision) next[key(targets[i])] = j.decision; });
+      return next;
+    });
+  }
 
   const queue = useMemo(() => {
     const rank = (c: SkuCase) => ["red", "amber", "info", "gray"].indexOf(bucket(c).tone);
@@ -411,7 +466,7 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
   const monitoring = cases.filter((c) => c.decision.actions.includes("do_nothing"));
   const safetyN = cases.filter((c) => c.decision.track === "safety").length;
   const unimpN = partners.filter((p) => p.unimprovable).length;
-  const doneN = decidable.filter((c) => decided[key(c)]).length;
+  const doneN = decidable.filter((c) => qmByKey[key(c)]).length;
 
   const byPartner = useMemo(() => {
     const m = new Map<string, SkuCase[]>();
@@ -443,6 +498,7 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
         <Tile n={safetyN} label="Safety alerts" tone="red" active={false} onClick={() => setTab("queue")} />
         <Tile n={unimpN} label="Flag to remove" tone="red" active={tab === "partners"} onClick={() => setTab("partners")} />
         <Tile n={autoActed.length} label="Handled for you" tone="green" active={tab === "auto"} onClick={() => setTab("auto")} />
+        <Tile n={appeals.length} label="Partner appeals" tone="info" active={false} onClick={() => setTab("queue")} />
       </div>
 
       {/* tabs */}
@@ -460,10 +516,10 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
         <div className="space-y-3">
           <p className="text-[12px] text-[var(--ink-3)]">Most important first. Approving anything that pauses or removes a partner takes effect only after your OK.</p>
           {queue.map((c) => (
-            <DecisionCard key={key(c)} c={c} ps={partners} cfg={config}
-              decided={decided[key(c)]} draft={drafts[key(c)] ?? ""}
+            <DecisionCard key={key(c)} c={c} ps={partners} cfg={config} appeal={appealByKey.get(key(c))} qm={qmByKey[key(c)]}
+              draft={drafts[key(c)] ?? ""}
               onDraft={(v) => setDrafts((d) => ({ ...d, [key(c)]: v }))}
-              onDecide={(ch) => setDecided((r) => ({ ...r, [key(c)]: { choice: ch, note: drafts[key(c)] ?? "" } }))} />
+              onApply={(o, l) => applyDecision(c, o, l)} />
           ))}
           {queue.length === 0 && <p className="uc-card py-8 text-center text-[13px] text-[var(--ink-3)]">🎉 Nothing needs you right now.</p>}
         </div>
@@ -489,14 +545,21 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
           <div>
             <h3 className="mb-2 text-[14px] font-bold">✅ Done automatically <span className="text-[12px] font-normal text-[var(--ink-3)]">— low-risk help, high confidence</span></h3>
             <div className="space-y-2">
-              {autoActed.map((c) => (
-                <div key={key(c)} className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-[12px]">
-                  <b>{nameOf(partners, c.row.partnerId)}</b>
-                  <Chip tone="purple">{c.row.sku}</Chip>
-                  <span className="text-[var(--ink-3)]">{CAUSE[c.decision.cause]?.label ?? c.decision.cause}</span>
-                  {c.decision.actions.map((a) => <Chip key={a} tone="green">{ACTION[a] ?? a}</Chip>)}
-                </div>
-              ))}
+              {autoActed.map((c) => {
+                const ap = appealByKey.get(key(c));
+                return (
+                  <div key={key(c)} className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-[12px]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <b>{nameOf(partners, c.row.partnerId)}</b>
+                      <Chip tone="purple">{c.row.sku}</Chip>
+                      <span className="text-[var(--ink-3)]">{CAUSE[c.decision.cause]?.label ?? c.decision.cause}</span>
+                      {c.decision.actions.map((a) => <Chip key={a} tone="green">{ACTION[a] ?? a}</Chip>)}
+                      {ap && <Chip tone="info">⚖ Partner appealed</Chip>}
+                    </div>
+                    {ap && <p className="mt-1.5 rounded-lg bg-[var(--info-tint)] px-2.5 py-1.5 text-[11px] italic text-[var(--ink-2)]">&ldquo;{ap.reason}&rdquo;</p>}
+                  </div>
+                );
+              })}
               {autoActed.length === 0 && <p className="text-[12px] text-[var(--ink-3)]">Nothing this cycle.</p>}
             </div>
           </div>
