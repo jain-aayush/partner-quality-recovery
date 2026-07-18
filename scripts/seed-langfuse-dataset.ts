@@ -6,18 +6,20 @@
  * Usage:  LANGFUSE_PUBLIC_KEY=... LANGFUSE_SECRET_KEY=... npm run seed:langfuse
  *
  * Ground-truth isolation (a hard repo rule): the dataset INPUT is the stripped PartnerPublic +
- * reviews — exactly what a diagnoser sees. `trueCause` only ever appears in expectedOutput/metadata,
- * never in input. Idempotent: re-running upserts by a stable item id.
+ * reviews — exactly what a diagnoser sees. The expected label comes from accuracy.ts (the
+ * sanctioned ground-truth reader) and only ever appears in expectedOutput, never in input.
+ * Idempotent: re-running upserts by a stable item id.
  *
  * ⚠️ SDK: targets the `langfuse` v3 client. Verify method names against langfuse.com/docs.
  */
 
 import partnersJson from "../data/partners.json";
 import reviewsJson from "../data/reviews.json";
+import { expectedCause } from "../src/lib/accuracy";
 import { loadConfig } from "../src/lib/config";
 import { stripGroundTruth } from "../src/lib/guardrails";
 import { flagPartners } from "../src/lib/screen";
-import { Partner, Review, RootCause } from "../src/lib/types";
+import { Partner, Review } from "../src/lib/types";
 
 // Next auto-loads .env.local; standalone tsx does not. Load it if present (Node ≥ 20.12), typed
 // defensively so an older @types/node still compiles. No-op when the file/method is absent.
@@ -28,11 +30,6 @@ try {
 }
 
 const DATASET = "partner-quality-gold";
-
-function expectedCause(p: Partner, minReviews: number): RootCause {
-  // Mirrors accuracy.ts: thin-data partners are expected to refuse, not guess.
-  return p.reviewCount < minReviews ? "insufficient_evidence" : (p.trueCause as RootCause);
-}
 
 async function main() {
   if (!process.env.LANGFUSE_SECRET_KEY || !process.env.LANGFUSE_PUBLIC_KEY) {
@@ -75,10 +72,11 @@ async function main() {
       datasetName: DATASET,
       id: `pqr-${p.id}`, // stable → idempotent upsert
       input: { partner: stripGroundTruth(p), reviews: reviewsFor(p.id) },
+      // Ground truth lives ONLY in expectedOutput (via accuracy.ts, the sanctioned reader) —
+      // never in input, and not duplicated raw into metadata.
       expectedOutput: { rootCause: expected },
       metadata: {
         zone: p.zone,
-        trueCause: p.trueCause,
         reviewCount: p.reviewCount,
         thinData: p.reviewCount < config.minReviews,
       },

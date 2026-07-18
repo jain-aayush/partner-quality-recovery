@@ -17,13 +17,13 @@
 
 import partnersJson from "../data/partners.json";
 import reviewsJson from "../data/reviews.json";
-import { scoreAccuracy } from "../src/lib/accuracy";
+import { expectedCause, scoreAccuracy } from "../src/lib/accuracy";
 import { loadConfig } from "../src/lib/config";
 import { diagnosePartner } from "../src/lib/diagnose";
 import { costUsd } from "../src/lib/pricing";
 import type { LlmCallMeta } from "../src/lib/observability";
 import { flagPartners } from "../src/lib/screen";
-import { Config, Diagnosis, Partner, Provider, Review, RootCause } from "../src/lib/types";
+import { Config, Diagnosis, Partner, Provider, Review } from "../src/lib/types";
 
 // Next auto-loads .env.local; standalone tsx does not. Load it if present (Node ≥ 20.12), typed
 // defensively so an older @types/node still compiles. No-op when the file/method is absent.
@@ -51,8 +51,6 @@ interface Row {
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
-const expectedCause = (p: Partner, minReviews: number): RootCause =>
-  p.reviewCount < minReviews ? "insufficient_evidence" : (p.trueCause as RootCause);
 
 async function main() {
   // We own trace creation for the dataset runs below — suppress the per-diagnosis auto-trace.

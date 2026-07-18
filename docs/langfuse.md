@@ -32,7 +32,8 @@ LANGFUSE_PUBLIC_KEY=... LANGFUSE_SECRET_KEY=... npm run seed:langfuse
 ```
 
 Pushes the flagged partners into a dataset `partner-quality-gold`. Input is the **ground-truth-stripped**
-`PartnerPublic` + reviews (a hard repo rule — `trueCause` only ever lands in `expectedOutput`/metadata).
+`PartnerPublic` + reviews (a hard repo rule — the expected label comes from `accuracy.ts`, the sanctioned
+ground-truth reader, and only ever lands in `expectedOutput`).
 Idempotent (stable item ids). → Langfuse → Datasets → `partner-quality-gold`.
 
 ## Power-up B — the provider flip as a scored experiment
