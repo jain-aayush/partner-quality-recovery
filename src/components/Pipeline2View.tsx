@@ -467,6 +467,11 @@ function AutoCard({ c, ps, qm, appeal, flag }: { c: SkuCase; ps: PartnerRollup[]
           </span>
         )}
       </div>
+      {/* one review for direction + the full flagged set, so the QM can sanity-check the auto-call */}
+      {c.complaints[0] && (
+        <p className="mt-2 text-[11.5px] text-[var(--ink-2)]"><span className="mr-1 font-bold uppercase tracking-wide text-[var(--ink-3)]">Why</span><span className="italic">&ldquo;{c.complaints[0].text}&rdquo;</span></p>
+      )}
+      <ReviewList complaints={c.complaints} excluded={c.excluded} />
       {appeal && <p className="mt-1.5 rounded-lg bg-[var(--info-tint)] px-2.5 py-1.5 text-[11px] italic text-[var(--ink-2)]">&ldquo;{appeal.reason}&rdquo;</p>}
       {qm && (
         <p className={`mt-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${qm.status === "rejected" ? "bg-[var(--page)] text-[var(--ink-2)]" : "bg-[var(--warn-tint)] text-[var(--warn)]"}`}>
@@ -588,9 +593,9 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
       {/* tabs */}
       <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-[var(--line)] bg-white p-1.5">
         <TabBtn id="queue" label="Your decisions" n={decidable.length} />
-        <TabBtn id="progress" label="In progress" n={progress.length} />
-        <TabBtn id="partners" label="Partners" n={partners.length} />
         <TabBtn id="auto" label="Auto-handled" n={autoActed.length + monitoring.length} />
+        <TabBtn id="partners" label="Partners" n={partners.length} />
+        <TabBtn id="progress" label="Watchlist" n={progress.length} />
         <TabBtn id="oversight" label="Oversight" n={appeals.length + disagreedN + flagsN} />
         {tab === "queue" && decidable.length > 0 && (
           <span className="ml-auto pr-2 text-[12px] font-semibold text-[var(--ink-3)]">{doneN}/{decidable.length} done</span>
