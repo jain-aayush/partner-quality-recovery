@@ -236,8 +236,17 @@ export async function logAuditEvent(
 ): Promise<boolean> {
   const client = await getClient();
   if (!client) return false;
+  // Link one output's whole lifecycle — QM decision → partner appeal → resolution — into a single
+  // Langfuse session keyed by partner + SKU, so the audit trail reads as one evaluation record:
+  // what the AI suggested, what was applied, what the partner contested, and how it was finally
+  // resolved (upheld/denied + remediation). Without a shared session these would be three
+  // unrelated top-level traces.
+  const sessionId =
+    typeof payload.partnerId === "string" && typeof payload.sku === "string"
+      ? `${payload.partnerId}|${payload.sku}`
+      : undefined;
   try {
-    client.trace({ name, input: payload, metadata: { audit: true, ...payload } });
+    client.trace({ name, sessionId, input: payload, metadata: { audit: true, ...payload } });
     await client.flushAsync();
     return true;
   } catch {

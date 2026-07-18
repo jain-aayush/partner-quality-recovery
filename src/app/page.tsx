@@ -151,7 +151,7 @@ export default function Home() {
                 {loading ? "Loading…" : "Upload CSV"}
                 <input type="file" accept=".csv,text/csv" className="hidden" disabled={loading} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
               </label>
-              <button onClick={() => setData(null)} className="text-[13px] font-semibold text-[var(--ink-3)] hover:text-[var(--ink)]">Home</button>
+              <button onClick={() => setData(null)} className="rounded-xl px-4 py-2 text-[13px] font-semibold text-[var(--ink-3)] transition-colors hover:bg-[var(--page)] hover:text-[var(--ink)]">Home</button>
             </div>
           </div>
           <Pipeline2View data={data} />
