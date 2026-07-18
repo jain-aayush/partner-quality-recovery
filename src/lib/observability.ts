@@ -164,6 +164,65 @@ export async function withDiagnosisTrace<T>(
   return fn(t);
 }
 
+/** What the pipeline2 tag runtime drives during one run's live tagging. Same no-op contract as DiagnosisTrace. */
+export interface TagTrace {
+  generation(meta: LlmCallMeta): void;
+  finish(output: Record<string, unknown>): void;
+}
+
+const NOOP_TAG_TRACE: TagTrace = { generation() {}, finish() {} };
+
+/**
+ * Wrap one pipeline run's live review-tagging in a Langfuse trace ("tag-reviews"): each provider
+ * batch call becomes a nested generation with token counts + USD cost. Strict no-op unless the
+ * LANGFUSE_* keys are set AND tagging runs in llm mode — mock/dev stays offline and free.
+ */
+export async function withTagTrace<T>(
+  ctx: { source: string; mode: string; provider: string; model: string; reviewCount: number; uniqueTexts: number },
+  fn: (trace: TagTrace) => Promise<T>
+): Promise<T> {
+  const client = ctx.mode === "llm" && !autoTraceSuppressed() ? await getClient() : null;
+  if (!client) return fn(NOOP_TAG_TRACE);
+
+  let trace: ReturnType<typeof client.trace> | null = null;
+  try {
+    trace = client.trace({
+      name: "tag-reviews",
+      input: { source: ctx.source, reviewCount: ctx.reviewCount, uniqueTexts: ctx.uniqueTexts },
+      metadata: { provider: ctx.provider, model: ctx.model },
+    });
+  } catch {
+    return fn(NOOP_TAG_TRACE);
+  }
+
+  const t: TagTrace = {
+    generation(m) {
+      try {
+        const cost = costUsd(m.model, { inputTokens: m.inputTokens, outputTokens: m.outputTokens });
+        const usage = {
+          input: m.inputTokens,
+          output: m.outputTokens,
+          unit: "TOKENS" as const,
+          ...(cost != null ? { totalCost: cost } : {}),
+        };
+        const gen = trace!.generation({ name: `${m.provider}-tagging`, model: m.model, input: m.input, usage });
+        gen.end({ output: m.output, usage });
+      } catch {
+        /* never break the product for telemetry */
+      }
+    },
+    finish(output) {
+      try {
+        trace!.update({ output, metadata: output });
+      } catch {
+        /* ignore */
+      }
+    },
+  };
+
+  return fn(t);
+}
+
 /** Flush queued events at a batch boundary (pipeline run, API request, script). No-op when off. */
 export async function flushObservability(): Promise<void> {
   if (!keysPresent()) return;

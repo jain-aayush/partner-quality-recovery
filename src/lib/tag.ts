@@ -63,7 +63,16 @@ function sentenceWith(text: string, keyword: string): string {
   return (s ?? text).trim();
 }
 
-function customerContext(c: Customer): CustomerContext {
+/** The recall-first safety scan on raw text — shared with the LLM-tag composer (tagStore.ts), where it is unioned in so an LLM miss can never lower the deterministic safety floor. */
+export function scanSafety(text: string): { subtype: SafetySubtype; quote: string } | null {
+  for (const sub of ["injury", "harassment", "theft", "hygiene"] as SafetySubtype[]) {
+    const kw = has(text, SAFETY[sub]);
+    if (kw) return { subtype: sub, quote: sentenceWith(text, kw) };
+  }
+  return null;
+}
+
+export function customerContext(c: Customer): CustomerContext {
   return {
     karma: c.karma,
     aovBand: c.aovBand,
@@ -103,16 +112,9 @@ export function tagReview(review: Review, customer: Customer): ReviewTag {
   if (customer.karma < THRESHOLDS.karmaLowTrust) flags.push("low_trust_reviewer");
 
   // Safety first (recall-first) — before the quarantine/thin/positive exits. Grave wins over hygiene.
-  let safetySubtype: SafetySubtype | null = null;
-  let safetyQuote: string | null = null;
-  for (const sub of ["injury", "harassment", "theft", "hygiene"] as SafetySubtype[]) {
-    const kw = has(review.text, SAFETY[sub]);
-    if (kw) {
-      safetySubtype = sub;
-      safetyQuote = sentenceWith(review.text, kw);
-      break;
-    }
-  }
+  const safety = scanSafety(review.text);
+  const safetySubtype: SafetySubtype | null = safety?.subtype ?? null;
+  const safetyQuote: string | null = safety?.quote ?? null;
 
   const base = {
     reviewId: review.id,

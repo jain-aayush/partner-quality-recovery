@@ -18,26 +18,29 @@ npm run dev        # open http://localhost:3000 → click "Run pipeline"
 
 ## Real LLM mode (optional)
 
-Copy `.env.example` to `.env.local`, set `DIAGNOSIS_MODE=llm`, pick a provider, and set its key:
+Copy `.env.example` to `.env.local`, set `DIAGNOSIS_MODE=llm`, and set a key. **Anthropic is the default provider**, with an automatic fallback chain: anthropic → openai → rule-based (no key / all providers down still works — deterministic rules take over). `llm` mode drives both the v1 diagnosis and the console's live review-tagging; the console shows an *Inference* badge (LLM · Anthropic / LLM · OpenAI / Rule-based) so you can see which engine actually ran.
 
 | Var | Default | Meaning |
 |---|---|---|
-| `DIAGNOSIS_MODE` | `mock` | `mock` \| `llm` |
-| `LLM_PROVIDER` | `openai` | `openai` \| `anthropic` \| `gemini` |
-| `OPENAI_API_KEY` | — | required when `LLM_PROVIDER=openai` |
-| `ANTHROPIC_API_KEY` | — | required when `LLM_PROVIDER=anthropic` |
-| `GEMINI_API_KEY` | — | required when `LLM_PROVIDER=gemini` |
-| `LLM_MODEL` | per-provider* | override the model |
+| `DIAGNOSIS_MODE` | `mock` | `mock` \| `llm` (llm = LLM diagnosis + live LLM tagging) |
+| `LLM_PROVIDER` | `anthropic` | `anthropic` \| `openai` \| `gemini` — tried first; then the fallback chain |
+| `ANTHROPIC_API_KEY` | — | primary key (default provider) |
+| `OPENAI_API_KEY` | — | fallback when anthropic fails or has no key |
+| `GEMINI_API_KEY` | — | only when `LLM_PROVIDER=gemini` (diagnosis only) |
+| `LLM_MODEL` | per-provider* | override the selected provider's model |
 | `CONFIDENCE_THRESHOLD` | `0.7` | below this, cases route to a human |
 | `MIN_REVIEWS` | `5` | below this, diagnosis refuses to guess |
 | `RATING_FLAG_THRESHOLD` | `3.5` | screening rule for the bottom cohort |
 
-\* Default model per provider: `openai` → `gpt-4o-mini`, `anthropic` → `claude-haiku-4-5-20251001`, `gemini` → `gemini-2.0-flash`. All three return the **same strict structured-output schema** behind one `Diagnoser` interface (`src/lib/providers/`), so the guardrails, policy table, and human gate are identical whichever provider runs. `OPENAI_MODEL` is still honored for back-compat.
+\* Default model per provider: `anthropic` → `claude-haiku-4-5-20251001`, `openai` → `gpt-4o-mini`, `gemini` → `gemini-2.0-flash`. All backends return the **same strict structured-output schema** behind one `Diagnoser` interface (`src/lib/providers/`), so the guardrails, policy table, and human gate are identical whichever provider runs. `OPENAI_MODEL` is still honored for back-compat. Fallback providers always run their own default model.
+
+**Review tagging** works the same way: the bundled sample ships pre-tagged (`data/uc-sample-tags.json`, generated once by Claude Code subagents — zero API spend), so "Run on sample data" never re-tags what's already tagged; only untagged texts are tagged live. Uploaded CSVs are tagged live in `llm` mode (deduped by review text, anthropic → openai → rule per batch).
 
 ## Deploy (Vercel)
 
 1. Import this repo at [vercel.com/new](https://vercel.com/new) — framework auto-detected, **no env vars needed** (mock mode).
-2. Optional real mode: add `DIAGNOSIS_MODE=llm` + `OPENAI_API_KEY` in Project Settings → Environment Variables.
+2. Optional real mode: add `DIAGNOSIS_MODE=llm` + `ANTHROPIC_API_KEY` (and optionally `OPENAI_API_KEY` as fallback) in Project Settings → Environment Variables.
+3. Optional tracing: add the `LANGFUSE_*` keys and every LLM diagnosis + live tag-review run lands in Langfuse with token counts and USD cost.
 
 No database — the synthetic corpus is checked-in JSON bundled with the app.
 

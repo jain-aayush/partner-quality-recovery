@@ -27,6 +27,9 @@ export interface OrderRow {
   intervention: string; interventionDate: string;
 }
 
+/** Pluggable per-review tagger. Defaults to the rule-based tag.ts; the API route passes an LLM-backed one (see tagRuntime.ts). */
+export type TagFn = (review: Review, customer: Customer) => ReviewTag;
+
 export interface SkuCase {
   row: SkuAggregate;
   diagnosis: Diagnosis;
@@ -111,11 +114,11 @@ function mentionsSku(text: string, sku: string): boolean {
  *   • if it names NO service (vague "it was botched") → attribute to ALL services in the order, so
  *     we don't lose the signal (the prevalence gate + human review guard against over-reacting).
  */
-export function tagOrders(rows: OrderRow[]): TaggedReview[] {
+export function tagOrders(rows: OrderRow[], tagFn: TagFn = tagReview): TaggedReview[] {
   const byOrder = new Map<string, OrderRow[]>();
   for (const r of rows) (byOrder.get(r.orderId) ?? byOrder.set(r.orderId, []).get(r.orderId)!).push(r);
   const out: TaggedReview[] = [];
-  const mk = (r: OrderRow) => out.push({ review: toReview(r), tag: tagReview(toReview(r), toCustomer(r)) });
+  const mk = (r: OrderRow) => out.push({ review: toReview(r), tag: tagFn(toReview(r), toCustomer(r)) });
 
   for (const [, lines] of byOrder) {
     const skus = [...new Set(lines.map((l) => l.sku))];
@@ -248,14 +251,14 @@ export function parseUnifiedCsv(text: string): CsvParseResult {
   return { rows, issues, backfillCount };
 }
 
-export function runFromRows(rows: OrderRow[]): UnifiedResult {
+export function runFromRows(rows: OrderRow[], tagFn: TagFn = tagReview): UnifiedResult {
   const nameOf = new Map(rows.map((r) => [r.partnerId, r.partnerName]));
   const zoneOf = (p: string) => rows.find((r) => r.partnerId === p)?.zone ?? "—";
   const maxMs = Math.max(...rows.map((r) => Date.parse(r.orderDate)));
 
   // ── monitor first: progress over the full record feeds ladder state into this cycle's decisions ──
   const history = interventionHistory(rows);
-  const progress = computeProgress(rows);
+  const progress = computeProgress(rows, tagFn);
   const stillFailingByKey = new Map(progress.map((p) => [keyOf(p.partnerId, p.sku), p.status === "stalled"]));
   const ladderByKey = new Map<string, LadderState>();
   for (const [k, events] of history) {
@@ -269,7 +272,7 @@ export function runFromRows(rows: OrderRow[]): UnifiedResult {
   const counts = orderCounts(win);
   const bookings = (p: string, s: string) => counts.get(keyOf(p, s)) ?? 0;
 
-  const tagged = tagOrders(win); // attributed per SKU
+  const tagged = tagOrders(win, tagFn); // attributed per SKU
   const tagsByKey = new Map<string, ReviewTag[]>();
   const itemsByKey = new Map<string, TaggedReview[]>();
   for (const t of tagged) {
@@ -336,7 +339,7 @@ export function runFromRows(rows: OrderRow[]): UnifiedResult {
  * has at least MIN_BOOKINGS_FLOOR bookings — below the floor the window is extended, never
  * scored as recovered and never a strike (a near-zero-volume week can't fake a recovery).
  */
-export function computeProgress(rows: OrderRow[]): Progress[] {
+export function computeProgress(rows: OrderRow[], tagFn: TagFn = tagReview): Progress[] {
   const history = interventionHistory(rows);
   if (history.size === 0) return [];
   const minMs = Math.min(...rows.map((r) => Date.parse(r.orderDate)));
@@ -344,7 +347,7 @@ export function computeProgress(rows: OrderRow[]): Progress[] {
   const bucketOf = (date: string) => Math.floor((Date.parse(date) - minMs) / WEEK_MS);
   const nWeeks = bucketOf(new Date(maxMs).toISOString().slice(0, 10)) + 1;
 
-  const allTagged = tagOrders(rows);
+  const allTagged = tagOrders(rows, tagFn);
   const ACTION_LABEL: Record<string, string> = { skill_training: "Free training", warning_scrutiny: "Warning + watch", supply_kit: "Supply kit", protective_soft_ban: "7-day pause + coaching", soft_ban: "7-day soft-ban" };
 
   const out: Progress[] = [];

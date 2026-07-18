@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import partnersJson from "../../data/partners.json";
-import Pipeline2View, { Pipeline2Response } from "../components/Pipeline2View";
+import Pipeline2View, { Inference, Pipeline2Response } from "../components/Pipeline2View";
 import { setActiveCsv } from "../lib/client-store";
 import { Partner } from "../lib/types";
 
@@ -14,6 +14,38 @@ const STEPS = [
   { icon: "🔍", title: "Find the real problem", desc: "Skill gap? Rushing? Cheap supplies? Or an unfair review?" },
   { icon: "✅", title: "You approve the big calls", desc: "Anything that affects earnings waits for your OK." },
 ];
+
+const ENGINE_META: Record<Inference["engine"], { label: string; chip: string }> = {
+  "llm-anthropic": { label: "LLM · Anthropic", chip: "bg-[var(--brand-tint)] text-[var(--brand-deep)]" },
+  "llm-openai": { label: "LLM · OpenAI", chip: "bg-[var(--info-tint)] text-[var(--info)]" },
+  rule: { label: "Rule-based", chip: "bg-[var(--page)] text-[var(--ink-2)]" },
+};
+
+/** Demo badge: which engine tagged this run — so we can SEE whether LLM tagging is live. */
+function InferenceBanner({ inf }: { inf: Inference }) {
+  const meta = ENGINE_META[inf.engine];
+  const c = inf.counts;
+  const total = c.stored + c.llmAnthropic + c.llmOpenai + c.rule;
+  const live = c.llmAnthropic + c.llmOpenai;
+  const parts = [
+    `${total.toLocaleString()} reviews tagged`,
+    c.stored > 0 ? `${c.stored.toLocaleString()} pre-tagged (stored LLM tags)` : null,
+    live > 0 ? `${live.toLocaleString()} tagged live` : null,
+    c.rule > 0 ? `${c.rule.toLocaleString()} rule-tagged` : null,
+  ].filter(Boolean);
+  return (
+    <div className="uc-card flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${meta.chip}`}>
+        Inference: {meta.label}
+      </span>
+      {inf.model && <span className="text-[12px] font-semibold text-[var(--ink-2)]">{inf.model}</span>}
+      <span className="text-[12px] text-[var(--ink-3)]">{parts.join(" · ")}</span>
+      {inf.llmErrors && (
+        <span className="text-[12px] font-semibold text-[var(--warn)]">Some LLM calls failed — those reviews fell back to rules.</span>
+      )}
+    </div>
+  );
+}
 
 function Landing({ onRun, onUpload, loading }: { onRun: () => void; onUpload: (f: File) => void; loading: boolean }) {
   const bottom = partners.filter((p) => p.avgRating < FLAG_BAR);
@@ -106,6 +138,7 @@ export default function Home() {
 
       {data && (
         <div className="space-y-5 pt-6">
+          {data.inference && <InferenceBanner inf={data.inference} />}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-[22px] font-extrabold tracking-tight">This week&apos;s check</h1>
