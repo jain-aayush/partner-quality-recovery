@@ -1,5 +1,12 @@
 import { Config, Diagnosis, PartnerPublic, Review } from "../types";
-import { buildUserContent, fetchWithRetry, RawLlmDiagnosis, SYSTEM_PROMPT, toDiagnosis } from "./shared";
+import {
+  buildUserContent,
+  fetchWithRetry,
+  RawLlmDiagnosis,
+  RecordLlmCall,
+  SYSTEM_PROMPT,
+  toDiagnosis,
+} from "./shared";
 
 const CAUSE_ENUM = [
   "skill_gap",
@@ -32,8 +39,10 @@ const GEMINI_RESPONSE_SCHEMA = {
 export async function geminiDiagnose(
   partner: PartnerPublic,
   reviews: Review[],
-  config: Config
+  config: Config,
+  record?: RecordLlmCall
 ): Promise<Diagnosis> {
+  const userContent = buildUserContent(partner, reviews);
   const res = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`,
     {
@@ -41,7 +50,7 @@ export async function geminiDiagnose(
       headers: { "Content-Type": "application/json", "x-goog-api-key": config.apiKey ?? "" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: buildUserContent(partner, reviews) }] }],
+        contents: [{ role: "user", parts: [{ text: userContent }] }],
         generationConfig: {
           temperature: 0,
           responseMimeType: "application/json",
@@ -55,5 +64,14 @@ export async function geminiDiagnose(
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (typeof text !== "string") throw new Error("Gemini returned no content");
-  return toDiagnosis(JSON.parse(text) as RawLlmDiagnosis, partner.id);
+  const raw = JSON.parse(text) as RawLlmDiagnosis;
+  record?.({
+    provider: "gemini",
+    model: config.model,
+    input: { system: SYSTEM_PROMPT, user: userContent },
+    output: raw,
+    inputTokens: data.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+  });
+  return toDiagnosis(raw, partner.id);
 }

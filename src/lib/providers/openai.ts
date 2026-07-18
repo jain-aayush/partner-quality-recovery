@@ -5,6 +5,7 @@ import {
   DIAGNOSIS_TOOL_NAME,
   fetchWithRetry,
   RawLlmDiagnosis,
+  RecordLlmCall,
   SYSTEM_PROMPT,
   toDiagnosis,
 } from "./shared";
@@ -13,8 +14,13 @@ import {
 export async function openaiDiagnose(
   partner: PartnerPublic,
   reviews: Review[],
-  config: Config
+  config: Config,
+  record?: RecordLlmCall
 ): Promise<Diagnosis> {
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: buildUserContent(partner, reviews) },
+  ];
   const res = await fetchWithRetry(
     "https://api.openai.com/v1/chat/completions",
     {
@@ -27,10 +33,7 @@ export async function openaiDiagnose(
           type: "json_schema",
           json_schema: { name: DIAGNOSIS_TOOL_NAME, strict: true, schema: DIAGNOSIS_JSON_SCHEMA },
         },
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildUserContent(partner, reviews) },
-        ],
+        messages,
       }),
     },
     "OpenAI"
@@ -39,5 +42,14 @@ export async function openaiDiagnose(
   const data = await res.json();
   const content = data.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new Error("OpenAI returned no message content");
-  return toDiagnosis(JSON.parse(content) as RawLlmDiagnosis, partner.id);
+  const raw = JSON.parse(content) as RawLlmDiagnosis;
+  record?.({
+    provider: "openai",
+    model: config.model,
+    input: messages,
+    output: raw,
+    inputTokens: data.usage?.prompt_tokens ?? 0,
+    outputTokens: data.usage?.completion_tokens ?? 0,
+  });
+  return toDiagnosis(raw, partner.id);
 }
