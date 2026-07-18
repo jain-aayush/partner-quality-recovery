@@ -68,6 +68,8 @@ export interface Config {
   minReviews: number;
   ratingFlagThreshold: number;
   apiKey?: string;
+  /** Groups a batch of diagnoses into one Langfuse session (one weekly run). Set at the batch boundary. */
+  sessionId?: string;
 }
 
 export type Stakes = "low" | "medium" | "high";

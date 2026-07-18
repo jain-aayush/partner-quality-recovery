@@ -2,6 +2,7 @@ import partnersJson from "../../data/partners.json";
 import reviewsJson from "../../data/reviews.json";
 import { scoreAccuracy } from "./accuracy";
 import { diagnosePartner } from "./diagnose";
+import { flushObservability } from "./observability";
 import { gate, POLICY } from "./policy";
 import { flagPartners } from "./screen";
 import { simulateOutcome } from "./simulate";
@@ -28,6 +29,10 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
  * Stateless: one call returns everything the dashboard needs.
  */
 export async function runPipeline(config: Config): Promise<PipelineResult> {
+  // One weekly run = one Langfuse session, so every partner's diagnosis groups together.
+  const runConfig: Config =
+    config.sessionId ? config : { ...config, sessionId: `pipeline-${new Date().toISOString()}` };
+
   const reviewsByPartner = new Map<string, Review[]>();
   for (const r of reviews) {
     const list = reviewsByPartner.get(r.partnerId) ?? [];
@@ -35,10 +40,10 @@ export async function runPipeline(config: Config): Promise<PipelineResult> {
     reviewsByPartner.set(r.partnerId, list);
   }
 
-  const flagged = flagPartners(partners, config.ratingFlagThreshold);
+  const flagged = flagPartners(partners, runConfig.ratingFlagThreshold);
 
   const diagnoses = await mapLimit(flagged, 5, (p) =>
-    diagnosePartner(p, reviewsByPartner.get(p.id) ?? [], config)
+    diagnosePartner(p, reviewsByPartner.get(p.id) ?? [], runConfig)
   );
 
   const cases: PartnerCase[] = flagged.map((partner, i) => {
@@ -48,7 +53,7 @@ export async function runPipeline(config: Config): Promise<PipelineResult> {
       partner,
       diagnosis,
       policy,
-      gate: gate(policy, diagnosis, config),
+      gate: gate(policy, diagnosis, runConfig),
       simulated: simulateOutcome(partner, diagnosis, policy),
     };
   });
@@ -62,7 +67,7 @@ export async function runPipeline(config: Config): Promise<PipelineResult> {
     const second = await diagnosePartner(
       c.partner,
       reviewsByPartner.get(c.partner.id) ?? [],
-      config
+      runConfig
     );
     c.simulated.escalatedToHuman = true;
     c.simulated.note +=
@@ -71,16 +76,19 @@ export async function runPipeline(config: Config): Promise<PipelineResult> {
         : ` Re-diagnosis suggests ${second.rootCause} — escalated to a human with both hypotheses.`;
   });
 
+  // Batch boundary: flush queued traces so a short-lived eval/serverless process doesn't drop them.
+  await flushObservability();
+
   return {
-    mode: config.mode,
-    provider: config.mode === "llm" ? config.provider : null,
-    model: config.mode === "llm" ? config.model : null,
+    mode: runConfig.mode,
+    provider: runConfig.mode === "llm" ? runConfig.provider : null,
+    model: runConfig.mode === "llm" ? runConfig.model : null,
     flagged: cases,
-    accuracy: scoreAccuracy(cases, config),
+    accuracy: scoreAccuracy(cases, runConfig),
     config: {
-      confidenceThreshold: config.confidenceThreshold,
-      minReviews: config.minReviews,
-      ratingFlagThreshold: config.ratingFlagThreshold,
+      confidenceThreshold: runConfig.confidenceThreshold,
+      minReviews: runConfig.minReviews,
+      ratingFlagThreshold: runConfig.ratingFlagThreshold,
     },
   };
 }
