@@ -3,6 +3,7 @@
 /** The QM-tool nav + footer. Hidden on the partner app (/partner) so the phone mock gets a clean canvas. */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { resetDemoState } from "../lib/client-store";
 
 const isPartner = (p: string | null) => !!p && p.startsWith("/partner");
 
@@ -20,6 +21,9 @@ export function TopNav() {
         <div className="ml-auto flex items-center gap-2">
           <Link href="/partner" className="rounded-full bg-[var(--brand-tint)] px-3 py-1 text-[12px] font-bold text-[var(--brand-deep)] ring-1 ring-[var(--line)] transition-colors hover:bg-[var(--brand)] hover:text-white">Partner view ↗</Link>
           <span className="rounded-full bg-[var(--page)] px-3 py-1 text-[12px] font-semibold text-[var(--ink-2)] ring-1 ring-[var(--line)]">Beauty · Delhi NCR</span>
+          <button onClick={() => { if (window.confirm("Clear all demo decisions, appeals and flags saved in this browser?")) resetDemoState(); }}
+            className="rounded-full px-3 py-1 text-[12px] font-semibold text-[var(--ink-3)] ring-1 ring-[var(--line)] transition-colors hover:text-[var(--ink)]"
+            title="Decisions, appeals and flags persist in this browser until you reset them">Reset demo</button>
         </div>
       </div>
     </nav>

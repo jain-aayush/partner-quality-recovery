@@ -12,9 +12,12 @@
     "generate:demo": "tsx data/generate-demo.ts",
     "generate:timeline": "tsx data/generate-timeline.ts",
     "eval": "tsx evals/run.ts",
-    "eval:v2": "tsx evals/run2.ts"
+    "eval:v2": "tsx evals/run2.ts",
+    "seed:langfuse": "tsx scripts/seed-langfuse-dataset.ts",
+    "experiment": "tsx scripts/run-experiment.ts"
   },
   "dependencies": {
+    "langfuse": "^3.38.20",
     "next": "16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4"

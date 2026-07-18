@@ -55,6 +55,9 @@ export interface RawLlmDiagnosis {
   reasoning: string;
 }
 
+/** Re-exported so provider modules and callers share one call-meta shape (see observability.ts). */
+export type { LlmCallMeta, RecordLlmCall } from "../observability";
+
 /** Identical serialization for every provider so results are comparable across backends. */
 export function buildUserContent(partner: PartnerPublic, reviews: Review[]): string {
   return JSON.stringify({

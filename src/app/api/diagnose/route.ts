@@ -3,6 +3,7 @@ import partnersJson from "../../../../data/partners.json";
 import reviewsJson from "../../../../data/reviews.json";
 import { loadConfig } from "../../../lib/config";
 import { diagnosePartner } from "../../../lib/diagnose";
+import { flushObservability } from "../../../lib/observability";
 import { gate, POLICY } from "../../../lib/policy";
 import { Partner, Review } from "../../../lib/types";
 
@@ -25,5 +26,6 @@ export async function POST(req: NextRequest) {
     config
   );
   const policy = POLICY[diagnosis.rootCause];
+  await flushObservability();
   return NextResponse.json({ diagnosis, policy, gate: gate(policy, diagnosis, config) });
 }

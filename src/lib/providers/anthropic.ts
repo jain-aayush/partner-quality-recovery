@@ -5,6 +5,7 @@ import {
   DIAGNOSIS_TOOL_NAME,
   fetchWithRetry,
   RawLlmDiagnosis,
+  RecordLlmCall,
   SYSTEM_PROMPT,
   toDiagnosis,
 } from "./shared";
@@ -22,8 +23,10 @@ interface AnthropicContentBlock {
 export async function anthropicDiagnose(
   partner: PartnerPublic,
   reviews: Review[],
-  config: Config
+  config: Config,
+  record?: RecordLlmCall
 ): Promise<Diagnosis> {
+  const userContent = buildUserContent(partner, reviews);
   const res = await fetchWithRetry(
     "https://api.anthropic.com/v1/messages",
     {
@@ -47,7 +50,7 @@ export async function anthropicDiagnose(
           },
         ],
         tool_choice: { type: "tool", name: DIAGNOSIS_TOOL_NAME },
-        messages: [{ role: "user", content: buildUserContent(partner, reviews) }],
+        messages: [{ role: "user", content: userContent }],
       }),
     },
     "Anthropic"
@@ -57,5 +60,13 @@ export async function anthropicDiagnose(
   const blocks: AnthropicContentBlock[] = Array.isArray(data.content) ? data.content : [];
   const toolUse = blocks.find((b) => b.type === "tool_use");
   if (!toolUse?.input) throw new Error("Anthropic returned no tool_use block");
+  record?.({
+    provider: "anthropic",
+    model: config.model,
+    input: { system: SYSTEM_PROMPT, user: userContent },
+    output: toolUse.input,
+    inputTokens: data.usage?.input_tokens ?? 0,
+    outputTokens: data.usage?.output_tokens ?? 0,
+  });
   return toDiagnosis(toolUse.input as RawLlmDiagnosis, partner.id);
 }
