@@ -583,7 +583,7 @@ export default function Pipeline2View({ data }: { data: Pipeline2Response }) {
       {/* summary tiles — click to jump */}
       <div className="flex flex-wrap gap-3">
         <Tile n={decidable.length - doneN} label="Need your decision" tone="amber" active={tab === "queue"} onClick={() => setTab("queue")} />
-        <Tile n={progress.length} label="In training" tone="purple" active={tab === "progress"} onClick={() => setTab("progress")} />
+        <Tile n={progress.length} label="Watchlist" tone="purple" active={tab === "progress"} onClick={() => setTab("progress")} />
         <Tile n={safetyN} label="Safety alerts" tone="red" active={false} onClick={() => setTab("queue")} />
         <Tile n={unimpN} label="Flag to remove" tone="red" active={tab === "partners"} onClick={() => setTab("partners")} />
         <Tile n={autoActed.length} label="Handled for you" tone="green" active={tab === "auto"} onClick={() => setTab("auto")} />
