@@ -52,6 +52,15 @@ function partnerView(c: SkuCase, qm: QmDecision | undefined): View {
   return copy("pending", c.row.sku); // human-gated, not yet decided → neutral
 }
 
+/** Cleared = no adverse action against the partner (protected, or a QM "no action") → nothing to appeal. */
+function isCleared(c: SkuCase, qm: QmDecision | undefined): boolean {
+  if (qm) return qm.status === "rejected" || qm.outcome === "review_protection";
+  const d = c.decision;
+  if (d.immediateActions.includes("safety_pause")) return false;
+  if (d.gate === "auto_approved") return suggestedOutcome(d) === "review_protection";
+  return false;
+}
+
 const keyOf = (c: SkuCase) => `${c.row.partnerId}|${c.row.sku}`;
 
 export default function PartnerApp() {
@@ -159,6 +168,7 @@ export default function PartnerApp() {
                 const v = partnerView(c, qm[keyOf(c)]);
                 const cite = c.complaints[0]?.text;
                 const appeal = appealByKey.get(keyOf(c));
+                const cleared = isCleared(c, qm[keyOf(c)]);
                 return (
                   <div key={keyOf(c)} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[var(--line)]">
                     <div className={`h-1 w-full ${STRIP[v.tone]}`} />
@@ -187,6 +197,8 @@ export default function PartnerApp() {
                           <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--page)] px-3 py-2 text-[12px] font-bold text-[var(--ink-2)]">Appeal reviewed — the decision stands</span>
                         ) : appeal ? (
                           <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--good-tint)] px-3 py-2 text-[12px] font-bold text-[var(--good)]">✓ Appeal sent — a different reviewer is on it</span>
+                        ) : cleared ? (
+                          <span className="text-[11px] font-semibold text-[var(--good)]">✓ Nothing to do — you&apos;re all set.</span>
                         ) : (
                           <button onClick={() => setModal({ c, view: v })} className={`rounded-lg px-4 py-2 text-[12.5px] font-bold text-white transition-opacity hover:opacity-90 ${STRIP[v.tone]}`}>Appeal</button>
                         )}

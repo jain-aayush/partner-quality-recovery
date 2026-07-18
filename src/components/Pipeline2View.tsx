@@ -299,6 +299,10 @@ function DecisionCard({ c, ps, cfg, draft, onDraft, onApply, qm, appeal }: {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-[var(--ink-3)]">or act differently</span>
+              {suggested !== "skill_training" && (
+                <button disabled={!canSubmit} onClick={() => onApply("skill_training", OUTCOME.skill_training.label(row.sku))}
+                  className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40">🎓 Put in training</button>
+              )}
               {alternatives.map((o) => (
                 <button key={o} disabled={!canSubmit} onClick={() => onApply(o, OUTCOME[o].label(row.sku))}
                   className={`rounded-lg px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40 ${o === "offboard" || o === "hard_ban_sku" ? "bg-[var(--bad)]" : "bg-[var(--warn)]"}`}>{OUTCOME[o].label(row.sku)}</button>
@@ -359,22 +363,34 @@ const PSTATUS: Record<ProgressStatus, { tone: Tone; label: string }> = {
   on_track: { tone: "info", label: "On track" },
   stalled: { tone: "red", label: "Stalled — your call" },
 };
-function Sparkline({ series, iv, measure, tone }: { series: { label: string; rate: number }[]; iv: number; measure: number; tone: Tone }) {
+function Sparkline({ series, watchStart, latest, measure, tone }: { series: { label: string; rate: number; paused?: boolean; bookings: number; complaints: number; event?: string }[]; watchStart: number; latest: number; measure: number; tone: Tone }) {
   const W = 320, H = 56, pad = 6;
   const max = Math.max(0.02, ...series.map((s) => s.rate));
   const step = series.length > 1 ? (W - 2 * pad) / (series.length - 1) : 0;
   const x = (i: number) => pad + i * step;
   const y = (r: number) => H - pad - (r / max) * (H - 2 * pad);
-  const line = series.map((s, i) => `${x(i)},${y(s.rate)}`).join(" ");
   const colorVar = tone === "green" ? "--good" : tone === "red" ? "--bad" : tone === "purple" ? "--brand" : "--info";
+  const shadeEnd = Math.min(measure, series.length - 1);
+  // Break the trend across paused (soft-ban) weeks so the line isn't drawn through a "0" that means no bookings.
+  const segments: string[] = []; let cur: string[] = [];
+  series.forEach((s, i) => { if (s.paused) { if (cur.length) { segments.push(cur.join(" ")); cur = []; } } else cur.push(`${x(i)},${y(s.rate)}`); });
+  if (cur.length) segments.push(cur.join(" "));
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-14 w-full" preserveAspectRatio="none">
-      {/* training window shaded from start to the 15-day check */}
-      {measure < series.length && <rect x={x(iv)} y={0} width={x(Math.min(measure, series.length - 1)) - x(iv)} height={H} fill="var(--brand-tint)" opacity={0.6} />}
-      <line x1={x(iv)} y1={0} x2={x(iv)} y2={H} stroke="var(--brand)" strokeWidth={1} strokeDasharray="3 3" />
+      {/* week demarcations — one faint gridline per week */}
+      {series.map((s, i) => <line key={`g${i}`} x1={x(i)} y1={0} x2={x(i)} y2={H} stroke="var(--line)" strokeWidth={0.5} />)}
+      {/* monitored span — from the watch start to the 15-day check */}
+      {shadeEnd > watchStart && <rect x={x(watchStart)} y={0} width={x(shadeEnd) - x(watchStart)} height={H} fill="var(--brand-tint)" opacity={0.45} />}
+      {/* soft-ban weeks — paused, no bookings */}
+      {series.map((s, i) => s.paused ? <rect key={`p${i}`} x={x(i) - step / 2} y={0} width={step} height={H} fill="var(--ink-3)" opacity={0.2} /> : null)}
+      {/* watch started — FIRST intervention */}
+      <line x1={x(watchStart)} y1={0} x2={x(watchStart)} y2={H} stroke="var(--brand)" strokeWidth={1.5} strokeDasharray="3 3" />
+      {/* latest action — most recent intervention (only when different from the start) */}
+      {latest !== watchStart && <line x1={x(latest)} y1={0} x2={x(latest)} y2={H} stroke="var(--ink-3)" strokeWidth={1} strokeDasharray="1 2" />}
+      {/* 15-day check */}
       {measure < series.length && <line x1={x(measure)} y1={0} x2={x(measure)} y2={H} stroke="var(--ink-3)" strokeWidth={1} strokeDasharray="2 2" />}
-      <polyline points={line} fill="none" stroke={`var(${colorVar})`} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-      {series.map((s, i) => <circle key={i} cx={x(i)} cy={y(s.rate)} r={i === iv || i === measure ? 3 : 1.6} fill={`var(${colorVar})`} />)}
+      {segments.map((pts, i) => <polyline key={i} points={pts} fill="none" stroke={`var(${colorVar})`} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />)}
+      {series.map((s, i) => s.paused ? null : <circle key={i} cx={x(i)} cy={y(s.rate)} r={i === watchStart || i === latest || i === measure ? 3 : 1.6} fill={`var(${colorVar})`} />)}
     </svg>
   );
 }
@@ -390,23 +406,23 @@ function ProgressCard({ p }: { p: Progress }) {
           <div className="flex items-center gap-2">
             <span className="text-[15px] font-extrabold">{p.name}</span>
             <Chip tone="purple">{p.sku}</Chip>
-            <span className="text-[12px] text-[var(--ink-3)]">{p.interventionLabel}</span>
+            <span className="rounded-md bg-[var(--page)] px-2 py-0.5 text-[11px] font-bold text-[var(--ink-2)]">{p.interventionSummary}</span>
           </div>
           <Chip tone={st.tone}>{st.label}</Chip>
         </div>
 
-        {/* weekly complaint-rate trend; shaded = training, dotted = 15-day check */}
+        {/* weekly complaint-rate trend; brand = watch start, gray band = soft-ban pause, dotted = 15-day check */}
         <div className="mt-2">
-          <Sparkline series={p.series} iv={p.interventionWeek} measure={p.interventionWeek + 2} tone={st.tone} />
+          <Sparkline series={p.series} watchStart={p.watchStartWeek} latest={p.interventionWeek} measure={p.interventionWeek + 2} tone={st.tone} />
           <div className="mt-0.5 flex justify-between text-[10px] text-[var(--ink-3)]">
             <span>weekly complaints</span>
-            <span>▓ training · ┊ 15-day check</span>
+            <span><span className="text-[var(--brand)]">┊</span> watch start · ┆ latest · ▨ paused · ┊ 15-day check</span>
           </div>
         </div>
 
-        {/* 15-day check: 15d before vs 15d after training + toward the 20% target */}
+        {/* 15-day check: 15d before vs 15d after the latest action + toward the 20% target */}
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px]">
-          <span className="text-[var(--ink-2)]">15d before <b className="text-[var(--ink)]">{Math.round(p.preRate * 100)}%</b> → 15d after training <b className={TONE[st.tone].chip.split(" ")[1]}>{Math.round(p.currentRate * 100)}%</b></span>
+          <span className="text-[var(--ink-2)]">15d before <b className="text-[var(--ink)]">{Math.round(p.preRate * 100)}%</b> → 15d after <b className={TONE[st.tone].chip.split(" ")[1]}>{Math.round(p.currentRate * 100)}%</b></span>
           <div className="flex flex-1 items-center gap-2">
             <div className="relative h-2 min-w-24 flex-1 overflow-hidden rounded-full bg-[var(--line)]">
               <div className={`h-full rounded-full ${TONE[st.tone].bar}`} style={{ width: `${toward}%` }} />
@@ -428,6 +444,33 @@ function ProgressCard({ p }: { p: Progress }) {
         </div>
 
         <p className="mt-2 text-[12px] text-[var(--ink-2)]">{p.phase} · {p.note}</p>
+
+        {/* full context — what happened each week, stacked */}
+        <div className="mt-3 border-t border-[var(--line)] pt-2.5">
+          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--ink-3)]">Week by week</div>
+          <div className="space-y-1">
+            {p.series.map((s, i) => {
+              const pct = Math.round(s.rate * 100);
+              const tags = [
+                i === p.watchStartWeek ? "watch started" : null,
+                i === p.interventionWeek && i !== p.watchStartWeek ? "latest action" : null,
+                i === p.interventionWeek + 2 ? "15-day check" : null,
+              ].filter(Boolean);
+              const desc = s.paused ? "⏸ Paused — 7-day soft-ban (no bookings)"
+                : s.event ? `${s.event}${s.complaints > 0 ? ` · still ${s.complaints}/${s.bookings} complaints (${pct}%)` : s.bookings ? ` · ${s.bookings} jobs, clean` : ""}`
+                  : s.bookings === 0 ? "No bookings"
+                    : s.complaints > 0 ? `${s.complaints} complaint${s.complaints === 1 ? "" : "s"} in ${s.bookings} jobs (${pct}%)`
+                      : `${s.bookings} jobs · no complaints`;
+              return (
+                <div key={i} className="flex items-baseline gap-2 text-[11px]">
+                  <span className="w-6 shrink-0 font-bold text-[var(--ink-3)]">{s.label}</span>
+                  <span className={`flex-1 ${s.paused ? "font-semibold text-[var(--ink)]" : s.event ? "font-semibold text-[var(--brand-deep)]" : "text-[var(--ink-2)]"}`}>{desc}</span>
+                  {tags.length > 0 && <span className="shrink-0 text-[10px] font-bold text-[var(--brand)]">{tags.join(" · ")}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -486,6 +529,8 @@ function AutoCard({ c, ps, qm, appeal, flag }: { c: SkuCase; ps: PartnerRollup[]
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <button disabled={!canSubmit} onClick={() => override("keep_watching")}
               className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-[12px] font-bold text-[var(--ink-2)] disabled:opacity-40">Undo — no action</button>
+            <button disabled={!canSubmit} onClick={() => override("skill_training")}
+              className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40">🎓 Put in training</button>
             {QM_ALTERNATIVES.map((o) => (
               <button key={o} disabled={!canSubmit} onClick={() => override(o)}
                 className={`rounded-lg px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40 ${o === "offboard" || o === "hard_ban_sku" ? "bg-[var(--bad)]" : "bg-[var(--warn)]"}`}>{OUTCOME[o].label(c.row.sku)}</button>

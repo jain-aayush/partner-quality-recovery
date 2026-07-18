@@ -270,8 +270,12 @@ export interface Progress {
   status: ProgressStatus;
   nextCheckDays: number;
   note: string;
-  /** Weekly issue-complaint rate over the tracked window (for the sparkline). */
-  series: { label: string; rate: number }[];
-  /** Index into `series` where the intervention landed. */
+  /** Plain-language intervention mix in play — e.g. "Free training", "Warning + watch (no training)", "7-day pause · strike 3/3 + training". */
+  interventionSummary: string;
+  /** Weekly issue-complaint rate + what happened that week (for the chart + the week-by-week log). `paused` weeks are 7-day soft-bans — no bookings. `event` = the intervention that landed that week. */
+  series: { label: string; rate: number; paused?: boolean; bookings: number; complaints: number; event?: string }[];
+  /** Index into `series` of the LATEST intervention — the 15-day pre/post scoring anchor + "latest action" tick. */
   interventionWeek: number;
+  /** Index into `series` where monitoring began — the FIRST intervention (the "watch started" marker). */
+  watchStartWeek: number;
 }

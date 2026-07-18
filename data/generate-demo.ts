@@ -58,22 +58,30 @@ const RATING: Record<string, number> = {
 
 interface Row { order_id: string; partner_id: string; partner_name: string; zone: string; customer_id: string; karma: number; aov_band: string; sku: string; order_date: string; rating: number; review_text: string; intervention: string; intervention_date: string; week: number }
 interface Spec { kind: string; count: number; karma?: number; aov?: string }
-interface Iv { kind: string; week: number }
+interface Iv { kind: string; week: number; day?: number } // `day` offsets within the week → distinct strike dates in one gapped week
+const isSoftBanKind = (k: string) => k === "soft_ban" || k === "protective_soft_ban";
+const ivDate = (v: Iv) => new Date(BASE.getTime() + ((v.week - 1) * 7 + (v.day ?? 0)) * 86400000).toISOString().slice(0, 10);
 
-/** Emit one partner × SKU across weeks. weeks[w-1] = the review specs for week w. */
+/**
+ * Emit one partner × SKU across weeks. A 7-day soft-ban week gets NO bookings (the partner is paused).
+ * Every week's rows carry the FULL intervention history so far, distributed round-robin, so no event
+ * is lost to a gap week (interventionHistory dedupes by date downstream → the ladder stays intact).
+ */
 function emit(out: Row[], id: string, name: string, zone: string, sku: string, weeks: Spec[][], ivs: Iv[] = []) {
-  const latestIv = (w: number) => ivs.filter((v) => v.week <= w).sort((a, b) => b.week - a.week)[0];
+  const gapWeeks = new Set(ivs.filter((v) => isSoftBanKind(v.kind)).map((v) => v.week));
   weeks.forEach((specs, wi) => {
     const w = wi + 1;
-    const iv = latestIv(w);
+    if (gapWeeks.has(w)) return; // soft-ban → no bookings this week
+    const past = ivs.filter((v) => v.week <= w).sort((a, b) => (a.week - b.week) || ((a.day ?? 0) - (b.day ?? 0)));
     let idx = 0;
     for (const s of specs) {
       for (let n = 0; n < s.count; n++, idx++) {
+        const iv = past.length ? past[idx % past.length] : undefined;
         out.push({
           order_id: `${id}-${skuShort(sku)}-w${w}-o${idx}`, partner_id: id, partner_name: name, zone,
           customer_id: `${id}-w${w}-o${idx}-c`, karma: s.karma ?? 0.8, aov_band: s.aov ?? "medium", sku,
           order_date: dateOf(w), rating: RATING[s.kind], review_text: pick(POOL[s.kind]),
-          intervention: iv?.kind ?? "", intervention_date: iv ? dateOf(iv.week) : "", week: w,
+          intervention: iv?.kind ?? "", intervention_date: iv ? ivDate(iv) : "", week: w,
         });
       }
     }
@@ -88,7 +96,8 @@ const beauty: Row[] = [];
 // 1) Priya — recovery: bad, coached wk2, back to healthy by wk6
 emit(beauty, "b01", "Priya Sharma", "North Delhi", "Hair Coloring", arc("skill", [4, 4, 3, 2, 1, 0], 14), [{ kind: "skill_training", week: 2 }]);
 // 2) Anjali — escalation: two coaching cycles (wk1, wk3), still failing → system recommends a soft-ban
-emit(beauty, "b02", "Anjali Mehta", "North Delhi", "Waxing", arc("time", [4, 5, 4, 5, 5, 5], 14), [{ kind: "warning_scrutiny", week: 1 }, { kind: "warning_scrutiny", week: 3 }]);
+// Warning + watch (NO training) → still failing → one 7-day soft-ban (wk4 = a booking gap), measured after.
+emit(beauty, "b02", "Anjali Mehta", "North Delhi", "Waxing", arc("time", [4, 5, 4, 5, 5, 5], 14), [{ kind: "warning_scrutiny", week: 1 }, { kind: "warning_scrutiny", week: 3 }, { kind: "soft_ban", week: 4 }]);
 // 3) Sunita — healthy until a safety incident (burn) appears in week 4
 emit(beauty, "b03", "Sunita Reddy", "West Delhi", "Facial", [
   [{ kind: "positive", count: 14 }], [{ kind: "positive", count: 14 }], [{ kind: "skill", count: 1 }, { kind: "positive", count: 13 }],
@@ -106,8 +115,10 @@ emit(beauty, "b05", "Meena Iyer", "East Delhi", "Hair Coloring", [
 // 6) Rekha — two services, both coached twice then soft-banned three times, still failing → unimprovable
 // Coach wk1, then 3 soft-ban strikes by wk4 — the last strike leaves a 2-week monitor window so the
 // wk6 upload scores her "still failing" → full ladder exhausted → unimprovable.
-const REKHA_SKILL: Iv[] = [{ kind: "skill_training", week: 1 }, { kind: "soft_ban", week: 2 }, { kind: "soft_ban", week: 3 }, { kind: "soft_ban", week: 4 }];
-const REKHA_TIME: Iv[] = [{ kind: "warning_scrutiny", week: 1 }, { kind: "soft_ban", week: 2 }, { kind: "soft_ban", week: 3 }, { kind: "soft_ban", week: 4 }];
+// Coached (training), then the full soft-ban ladder — 3 strikes shown as ONE recent pause (wk4, distinct
+// dates), still failing → ladder exhausted. Chart shows the pause + "strike 3/3 + training".
+const REKHA_SKILL: Iv[] = [{ kind: "skill_training", week: 1 }, { kind: "soft_ban", week: 4, day: 0 }, { kind: "soft_ban", week: 4, day: 1 }, { kind: "soft_ban", week: 4, day: 2 }];
+const REKHA_TIME: Iv[] = [{ kind: "warning_scrutiny", week: 1 }, { kind: "skill_training", week: 2 }, { kind: "soft_ban", week: 4, day: 0 }, { kind: "soft_ban", week: 4, day: 1 }, { kind: "soft_ban", week: 4, day: 2 }];
 emit(beauty, "b06", "Rekha Das", "Central Delhi", "Makeup", arc("skill", [5, 5, 5, 5, 6, 6], 13), REKHA_SKILL);
 emit(beauty, "b06", "Rekha Das", "Central Delhi", "Hair Spa", arc("time", [5, 6, 5, 6, 5, 6], 12), REKHA_TIME);
 // 7) Neha — healthy control throughout

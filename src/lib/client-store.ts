@@ -205,10 +205,19 @@ export function toggleFlag(input: Omit<AutoFlag, "flaggedAt">) {
   write({ ...s, flags });
 }
 
-/** Set (or clear, with null) the dataset the whole demo runs on. */
+/**
+ * Set (or clear, with null) the dataset the whole demo runs on. A DIFFERENT dataset is a fresh
+ * cycle: clear prior QM decisions, appeals and flags so they don't re-apply to same-keyed cases
+ * (partner IDs recur across weeks/datasets). Re-loading the SAME dataset keeps in-progress work.
+ */
 export function setActiveCsv(active: { name: string; csv: string } | null) {
   const s = read();
-  write({ ...s, activeCsv: active ? { ...active, uploadedAt: new Date().toISOString() } : null });
+  const cur = s.activeCsv;
+  const sameDataset =
+    (active === null && cur === null) ||
+    (!!active && !!cur && cur.name === active.name && cur.csv === active.csv);
+  const carried = sameDataset ? s : { decisions: {}, appeals: [], flags: {} };
+  write({ ...carried, activeCsv: active ? { ...active, uploadedAt: new Date().toISOString() } : null });
 }
 
 export function resetDemoState() {
