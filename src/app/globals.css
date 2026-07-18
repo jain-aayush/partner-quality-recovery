@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
-/* Urban Company design tokens */
+/* Urban Company design tokens — UC's language is monochrome: white surfaces, near-black ink,
+   black CTAs; color is reserved for status. */
 :root {
   --ink: #0f0f0f;
-  --ink-2: #545454;
+  --ink-2: #4d4d4d;
   --ink-3: #8a8a8a;
-  --page: #f6f5f9;
+  --page: #f5f5f5;
   --card: #ffffff;
-  --line: #e6e4ee;
+  --line: #e8e8e8;
 
-  /* UC brand purple */
-  --brand: #6e42e5;
-  --brand-deep: #572ac8;
-  --brand-tint: #f1ecff;
+  /* UC brand black */
+  --brand: #0f0f0f;
+  --brand-deep: #000000;
+  --brand-tint: #efefef;
 
   /* semantic */
   --good: #16a34a;
@@ -42,7 +43,7 @@ body {
 }
 
 ::selection {
-  background: #ede7fd;
+  background: #e5e5e5;
 }
 
 /* subtle card lift */

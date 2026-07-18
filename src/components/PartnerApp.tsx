@@ -3,13 +3,13 @@
 /**
  * Partner-facing companion app (mock) — what a partner sees in their Urban Company app. Copy is
  * short and calm, and states plainly whether an action is one service or the whole account. It
- * reflects the QM's ACTUAL decision (from /api/decisions, polled) — until a human decides an
+ * reflects the QM's ACTUAL decision (shared browser-local store) — until a human decides an
  * income-affecting case, the partner just sees a neutral "under review", never a scary outcome.
- * A demo dropdown swaps the partner. Every card has an Appeal button → /api/appeals.
+ * A demo dropdown swaps the partner. Every card has an Appeal button writing to the same store.
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { QmDecision } from "../lib/decisions-store";
+import { fileAppeal, QmDecision, useDemoState } from "../lib/client-store";
 import type { Decision } from "../lib/model";
 import { OutcomeKind, suggestedOutcome } from "../lib/outcomes";
 import type { Pipeline2Response, SkuCase } from "./Pipeline2View";
@@ -56,12 +56,16 @@ const keyOf = (c: SkuCase) => `${c.row.partnerId}|${c.row.sku}`;
 
 export default function PartnerApp() {
   const [data, setData] = useState<Pipeline2Response | null>(null);
-  const [qm, setQm] = useState<Record<string, QmDecision>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string>("");
-  const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [modal, setModal] = useState<{ c: SkuCase; view: View } | null>(null);
+
+  // QM decisions and this partner's appeals come from the shared browser-local store, so a QM
+  // action on the dashboard shows here instantly — and both survive refreshes.
+  const demo = useDemoState();
+  const qm = demo.decisions;
+  const appealedKeys = useMemo(() => new Set(demo.appeals.map((a) => `${a.partnerId}|${a.sku}`)), [demo.appeals]);
 
   useEffect(() => {
     (async () => {
@@ -73,16 +77,6 @@ export default function PartnerApp() {
       } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
       finally { setLoading(false); }
     })();
-  }, []);
-
-  // Poll QM decisions so the partner view updates live when a QM acts on the dashboard.
-  useEffect(() => {
-    const load = () => fetch("/api/decisions").then((r) => r.json())
-      .then((j: { decisions: QmDecision[] }) => setQm(Object.fromEntries((j.decisions ?? []).map((d) => [`${d.partnerId}|${d.sku}`, d]))))
-      .catch(() => {});
-    load();
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
   }, []);
 
   const partnerOptions = useMemo(() => {
@@ -145,7 +139,7 @@ export default function PartnerApp() {
               {cards.map((c) => {
                 const v = partnerView(c, qm[keyOf(c)]);
                 const cite = c.complaints[0]?.text;
-                const done = submitted[keyOf(c)];
+                const done = appealedKeys.has(keyOf(c));
                 return (
                   <div key={keyOf(c)} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[var(--line)]">
                     <div className={`h-1 w-full ${STRIP[v.tone]}`} />
@@ -184,7 +178,7 @@ export default function PartnerApp() {
       {modal && (
         <AppealDialog partnerName={partner?.name ?? modal.c.row.partnerId} skuCase={modal.c} view={modal.view} qm={qm[keyOf(modal.c)]}
           onClose={() => setModal(null)}
-          onSubmitted={() => { setSubmitted((s) => ({ ...s, [keyOf(modal.c)]: true })); setModal(null); }} />
+          onSubmitted={() => setModal(null)} />
       )}
     </div>
   );
@@ -194,25 +188,16 @@ function AppealDialog({ partnerName, skuCase, view, qm, onClose, onSubmitted }: 
   partnerName: string; skuCase: SkuCase; view: View; qm: QmDecision | undefined; onClose: () => void; onSubmitted: () => void;
 }) {
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const canSubmit = reason.trim().length >= 3 && !busy;
+  const canSubmit = reason.trim().length >= 3;
 
-  async function submit() {
-    setBusy(true); setErr(null);
-    try {
-      const res = await fetch("/api/appeals", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          partnerId: skuCase.row.partnerId, partnerName, sku: skuCase.row.sku,
-          cause: skuCase.decision.cause, action: qm?.outcome ?? suggestedOutcome(skuCase.decision),
-          decisionLabel: view.title, reason: reason.trim(),
-        }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? "Couldn't submit your appeal.");
-      onSubmitted();
-    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
+  // Writes straight to the shared browser-local store — no network round-trip to hang on.
+  function submit() {
+    fileAppeal({
+      partnerId: skuCase.row.partnerId, partnerName, sku: skuCase.row.sku,
+      cause: skuCase.decision.cause, action: qm?.outcome ?? suggestedOutcome(skuCase.decision),
+      decisionLabel: view.title, reason: reason.trim().slice(0, 2000),
+    });
+    onSubmitted();
   }
 
   return (
@@ -224,10 +209,9 @@ function AppealDialog({ partnerName, skuCase, view, qm, onClose, onSubmitted }: 
         <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4} autoFocus
           placeholder="e.g. The customer's hair was already damaged before the appointment…"
           className="mt-3 w-full resize-none rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[var(--brand)]" />
-        {err && <p className="mt-2 text-[12px] font-semibold text-[var(--bad)]">{err}</p>}
         <div className="mt-3 flex items-center justify-end gap-2">
           <button onClick={onClose} className="rounded-lg px-4 py-2 text-[13px] font-bold text-[var(--ink-2)] hover:bg-[var(--page)]">Cancel</button>
-          <button onClick={submit} disabled={!canSubmit} className="rounded-lg bg-[var(--brand)] px-5 py-2 text-[13px] font-bold text-white hover:bg-[var(--brand-deep)] disabled:opacity-40">{busy ? "Sending…" : "Submit appeal"}</button>
+          <button onClick={submit} disabled={!canSubmit} className="rounded-lg bg-[var(--brand)] px-5 py-2 text-[13px] font-bold text-white hover:bg-[var(--brand-deep)] disabled:opacity-40">Submit appeal</button>
         </div>
       </div>
     </div>

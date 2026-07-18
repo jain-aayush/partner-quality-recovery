@@ -23,7 +23,7 @@ function Landing({ onRun, onUpload, loading }: { onRun: () => void; onUpload: (f
       <section className="text-center">
         <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--brand)]">Quality Console</div>
         <h1 className="mx-auto mt-3 max-w-2xl text-[36px] font-extrabold leading-[1.12] tracking-tight">
-          Which partners need help — and <em className="not-italic text-[var(--brand)]">why</em>.
+          Which partners need help — and <em className="not-italic underline decoration-[var(--ink-3)] decoration-[3px] underline-offset-8">why</em>.
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-[var(--ink-2)]">
           The same low rating can mean five different things. We find the real reason, fix the small
@@ -31,7 +31,7 @@ function Landing({ onRun, onUpload, loading }: { onRun: () => void; onUpload: (f
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <button onClick={onRun} disabled={loading}
-            className="rounded-xl bg-[var(--brand)] px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_6px_20px_rgba(110,66,229,0.35)] transition-colors hover:bg-[var(--brand-deep)] disabled:opacity-60">
+            className="rounded-xl bg-[var(--brand)] px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.22)] transition-colors hover:bg-[var(--brand-deep)] disabled:opacity-60">
             {loading ? "Checking…" : "Run on sample data"}
           </button>
           <label className="cursor-pointer rounded-xl border border-[var(--line)] bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--ink)] transition-colors hover:bg-[var(--page)]">
