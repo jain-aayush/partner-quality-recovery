@@ -362,12 +362,30 @@ export function computeProgress(rows: OrderRow[], tagFn: TagFn = tagReview): Pro
     const orders = new Array(nWeeks).fill(0).map(() => new Set<string>());
     for (const r of groupRows) orders[bucketOf(r.orderDate)].add(r.orderId);
     const wtd = new Array(nWeeks).fill(0);
-    for (const t of tags) if (t.tag.sentiment === "negative" && t.tag.problemClasses.includes(cause)) wtd[bucketOf(t.review.date)] += reviewWeight(t.tag.customer.karma, t.tag.customer.highValue);
-    const series = Array.from({ length: nWeeks }, (_, w) => ({ label: `W${w + 1}`, rate: orders[w].size > 0 ? Number((wtd[w] / orders[w].size).toFixed(4)) : 0 }));
+    const raw = new Array(nWeeks).fill(0);
+    for (const t of tags) if (t.tag.sentiment === "negative" && t.tag.problemClasses.includes(cause)) { const b = bucketOf(t.review.date); wtd[b] += reviewWeight(t.tag.customer.karma, t.tag.customer.highValue); raw[b] += 1; }
+    // Soft-ban weeks are a 7-day pause with NO bookings — mark them so the chart shows a pause, not "0 complaints".
+    const softBanWeeks = new Set(events.filter((e) => isSoftBan(e.kind)).map((e) => Math.min(nWeeks - 1, Math.max(0, bucketOf(e.date)))));
+    // Which intervention landed each week (latest same-week event wins, e.g. a soft-ban over a same-day coaching note).
+    const eventAt = new Map<number, string>();
+    for (const e of events) eventAt.set(Math.min(nWeeks - 1, Math.max(0, bucketOf(e.date))), ACTION_LABEL[e.kind] ?? e.kind);
+    const series = Array.from({ length: nWeeks }, (_, w) => ({ label: `W${w + 1}`, rate: orders[w].size > 0 ? Number((wtd[w] / orders[w].size).toFixed(4)) : 0, paused: softBanWeeks.has(w) && orders[w].size === 0, bookings: orders[w].size, complaints: raw[w], event: eventAt.get(w) }));
 
     const last = events[events.length - 1];
+    const first = events[0]; // events are date-ascending → first = when the watch/coaching began
     const ladder = deriveLadder(events, false, maxMs);
+    // Plain-language mix of what's in play — training-or-not, and how far up the soft-ban ladder.
+    const kinds = new Set(events.map((e) => e.kind));
+    const trained = kinds.has("skill_training") || kinds.has("protective_soft_ban");
+    const interventionSummary =
+      ladder.softBanStrikes > 0
+        ? `7-day pause${ladder.softBanStrikes > 1 ? ` · strike ${Math.min(ladder.softBanStrikes, THRESHOLDS.softBanMax)}/${THRESHOLDS.softBanMax}` : ""}${trained ? " + training" : " (no training)"}`
+        : kinds.has("warning_scrutiny") ? (trained ? "Warning + training" : "Warning + watch (no training)")
+          : kinds.has("skill_training") ? "Free training"
+            : kinds.has("supply_kit") ? "Supply kit"
+              : ACTION_LABEL[last.kind] ?? last.kind;
     const interventionWeek = Math.min(nWeeks - 1, Math.max(0, bucketOf(last.date)));
+    const watchStartWeek = Math.min(nWeeks - 1, Math.max(0, bucketOf(first.date)));
     const pre = avg(series.slice(Math.max(0, interventionWeek - 2), interventionWeek).map((s) => s.rate)) || series[Math.max(0, interventionWeek - 1)].rate;
     const measureWeek = interventionWeek + 2;
     const postSlice = series.slice(measureWeek, measureWeek + 2);
@@ -402,9 +420,9 @@ export function computeProgress(rows: OrderRow[], tagFn: TagFn = tagReview): Pro
             : `15-day check: down ${Math.round(dropPct * 100)}% — improving toward the ${Math.round(target * 100)}% bar.`;
 
     out.push({
-      partnerId, name: groupRows[0].partnerName, zone: groupRows[0].zone, sku, interventionLabel: ACTION_LABEL[last.kind] ?? last.kind,
+      partnerId, name: groupRows[0].partnerName, zone: groupRows[0].zone, sku, interventionLabel: ACTION_LABEL[last.kind] ?? last.kind, interventionSummary,
       phase, daysElapsed, windowDays: THRESHOLDS.monitorWindowDays, preRate: Number(pre.toFixed(4)), currentRate,
-      dropPct: Number(dropPct.toFixed(2)), targetDrop: target, status, nextCheckDays, note, series, interventionWeek,
+      dropPct: Number(dropPct.toFixed(2)), targetDrop: target, status, nextCheckDays, note, series, interventionWeek, watchStartWeek,
     });
   }
   return out;
